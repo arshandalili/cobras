@@ -13,6 +13,7 @@ from ._lin_act import LinAcT
 # ODESteer
 from ._ode_steer import BaseODESteer, ODESteer, RFFODESteer
 from ._step_ode_steer import BaseStepODESteer, StepODESteer, RFFStepODESteer    
+from ._spherical_steer import SphericalSteer  
 
 # SphereSteer
 from ._sphere_steer import SphereSteer
@@ -24,7 +25,7 @@ from ._sphere_steer_v4 import SphereSteerV4
 __all__ = [
     'Steer', 'VecSteer',
     # Baselines
-    'RepE', 'CAA', 'ITI', 'MiMiC', 'LinAcT',
+    'RepE', 'CAA', 'ITI', 'MiMiC', 'LinAcT', 'SphericalSteer'
     # ODESteer
     'BaseODESteer', 'ODESteer', 'RFFODESteer',
     'BaseStepODESteer', 'StepODESteer', 'RFFStepODESteer',

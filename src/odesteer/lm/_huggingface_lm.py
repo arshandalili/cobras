@@ -215,13 +215,49 @@ class HuggingFaceLM:
             return
         self.steer_model.fit(*args, **kwargs)
     
+    def get_num_layers(self) -> int:
+        if hasattr(self.model, "model") and hasattr(self.model.model, "layers"):
+            return len(self.model.model.layers)
+        if hasattr(self.model, "transformer") and hasattr(self.model.transformer, "h"):
+            return len(self.model.transformer.h)
+        raise AttributeError(f"Cannot infer number of layers for {type(self.model).__name__}")
     
+    # @torch.no_grad()
+    # def extract_message_eos_activations(
+    #     self,
+    #     messages: list[list[dict]],
+    #     layer_idx: Optional[int] = None,
+    # ) -> list[Tensor]:
+    #     assert self.tokenizer.chat_template is not None, "Chat template is not set"
+    #     formatted_prompts = self.tokenizer.apply_chat_template(
+    #         messages,
+    #         tokenize = False,
+    #         add_generation_prompt = False,
+    #         continue_final_message = False,
+    #     )
+    #     return self.extract_prompt_eos_activations(formatted_prompts, layer_idx)
+    
+    
+    # @torch.no_grad()
+    # def extract_prompt_eos_activations(
+    #     self,
+    #     prompts: list[str],
+    #     layer_idx: Optional[int] = None,
+    # ) -> list[Tensor]:
+    #     if layer_idx is None:
+    #         layer_idx = len(self.model.model.layers) // 2 - 1
+    #     inputs = self.tokenizer(prompts, return_tensors = 'pt', padding = True).to(self.model.device)
+    #     outputs = self.model(**inputs, output_hidden_states = True)
+    #     hidden_states = outputs.hidden_states[1:][layer_idx]
+    #     # left padding settings
+    #     return hidden_states[:, -1, :]
+
     @torch.no_grad()
     def extract_message_eos_activations(
         self,
         messages: list[list[dict]],
-        layer_idx: Optional[int] = None,
-    ) -> list[Tensor]:
+        layer_idx: int | list[int] | None = None,
+    ):
         assert self.tokenizer.chat_template is not None, "Chat template is not set"
         formatted_prompts = self.tokenizer.apply_chat_template(
             messages,
@@ -236,16 +272,18 @@ class HuggingFaceLM:
     def extract_prompt_eos_activations(
         self,
         prompts: list[str],
-        layer_idx: Optional[int] = None,
-    ) -> list[Tensor]:
-        if layer_idx is None:
-            layer_idx = len(self.model.model.layers) // 2 - 1
+        layer_idx: int | list[int] | None = None,
+    ):
         inputs = self.tokenizer(prompts, return_tensors = 'pt', padding = True).to(self.model.device)
         outputs = self.model(**inputs, output_hidden_states = True)
-        hidden_states = outputs.hidden_states[1:][layer_idx]
-        # left padding settings
-        return hidden_states[:, -1, :]
-        
+        hidden_states = outputs.hidden_states[1:]  # drop embedding layer
+
+        if layer_idx is None:
+            layer_idx = list(range(len(hidden_states)))
+        elif isinstance(layer_idx, int):
+            return hidden_states[layer_idx][:, -1, :]
+
+        return {i: hidden_states[i][:, -1, :] for i in layer_idx}
     
     def register_steer_hook(
         self, 
