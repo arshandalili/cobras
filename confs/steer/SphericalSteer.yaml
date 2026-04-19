@@ -1,0 +1,7 @@
+type: SphericalSteer
+kwargs:
+  kappa: 20.0
+  alpha: 0.7
+  beta: -0.15
+T: 1.0
+name: ${steer.type}-kappa${steer.kwargs.kappa}-alpha${steer.kwargs.alpha}-beta${steer.kwargs.beta}-T${steer.T}

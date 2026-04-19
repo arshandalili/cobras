@@ -13,11 +13,12 @@ from ._lin_act import LinAcT
 # ODESteer
 from ._ode_steer import BaseODESteer, ODESteer, RFFODESteer
 from ._step_ode_steer import BaseStepODESteer, StepODESteer, RFFStepODESteer    
+from ._spherical_steer import SphericalSteer  
 
 __all__ = [
     'Steer', 'VecSteer', 
     # Baselines
-    'RepE', 'CAA', 'ITI', 'MiMiC', 'LinAcT',
+    'RepE', 'CAA', 'ITI', 'MiMiC', 'LinAcT', 'SphericalSteer'
     # ODESteer
     'BaseODESteer', 'ODESteer', 'RFFODESteer',
     'BaseStepODESteer', 'StepODESteer', 'RFFStepODESteer',
