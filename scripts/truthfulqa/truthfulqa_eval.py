@@ -22,7 +22,7 @@ truthfulqa_df_cols = [
 ]
 
 steer_methods = [
-    "NoSteer", "RepE", "ITI",  "CAA", "MiMiC", "LinAcT",
+    "NoSteer", "RepE", "ITI",  "CAA", "MiMiC", "LinAcT", "SphericalSteer"
     "ODESteer"
 ]
 steer_order_map = {val: i for i, val in enumerate(steer_methods)}
