@@ -22,7 +22,7 @@ ultrafeedback_df_cols = [
 steer_methods = [
     "NoSteer", "RepE", "ITI", "CAA", "MiMiC",
     "HPRSteer", "ReControl", "TruthFlowSteer", "LinAcT",
-    "BODES"
+    "BODES", "SphericalSteer"
 ]
 steer_order_map = {val: i for i, val in enumerate(steer_methods)}
 
