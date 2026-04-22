@@ -1,0 +1,17 @@
+defaults:
+  - _self_
+  - steer: NoSteer
+  - override hydra/hydra_logging: disabled
+  - override hydra/job_logging: disabled
+
+model: Llama3.1-8B-Base
+dataset: gsm8k
+layer_idx: 13
+batch_size: 10
+seed: 42
+num_examples: 100
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null
