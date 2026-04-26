@@ -152,6 +152,64 @@ def load_tqa_gen_data(
     return pos_activations, neg_activations
 
 
+def load_tqa_gen_data_with_idx(
+    model_name: str,
+    layer_idx: int,
+    split_idx: int,
+) -> tuple[Tensor, Tensor, np.ndarray, np.ndarray]:
+    pos_activations, neg_activations = load_tqa_gen_data(model_name, layer_idx, split_idx)
+    data_dir = get_project_dir() / 'data' / 'truthfulqa' / 'activations' / model_name
+    pos_q_idx = torch.load(data_dir / f'pos_{split_idx}_question_idx.pt', weights_only=False)
+    neg_q_idx = torch.load(data_dir / f'neg_{split_idx}_question_idx.pt', weights_only=False)
+    return pos_activations, neg_activations, pos_q_idx, neg_q_idx
+
+
+def load_tqa_gen_data_all_splits(
+    model_name: str,
+    layer_idx: int,
+) -> tuple[Tensor, Tensor]:
+    pos0, neg0 = load_tqa_gen_data(model_name, layer_idx, 0)
+    pos1, neg1 = load_tqa_gen_data(model_name, layer_idx, 1)
+    return torch.cat([pos0, pos1], dim=0), torch.cat([neg0, neg1], dim=0)
+
+
+def load_tqa_gen_data_all_splits_with_idx(
+    model_name: str,
+    layer_idx: int,
+) -> tuple[Tensor, Tensor, np.ndarray, np.ndarray]:
+    pos0, neg0, pq0, nq0 = load_tqa_gen_data_with_idx(model_name, layer_idx, 0)
+    pos1, neg1, pq1, nq1 = load_tqa_gen_data_with_idx(model_name, layer_idx, 1)
+    offset = len(load_tqa_gen_questions(0))
+    return (
+        torch.cat([pos0, pos1], dim=0),
+        torch.cat([neg0, neg1], dim=0),
+        np.concatenate([pq0, pq1 + offset]),
+        np.concatenate([nq0, nq1 + offset]),
+    )
+
+
+def load_mmlu_data(
+    split: Literal["test", "validation", "dev"] = "test",
+) -> tuple[list[str], list[str], list[list[str]]]:
+    from datasets import load_dataset
+    ds = load_dataset("cais/mmlu", "all", split=split)
+    letter_map = {0: "A", 1: "B", 2: "C", 3: "D"}
+    questions = [r["question"] for r in ds]
+    correct_letters = [letter_map[r["answer"]] for r in ds]
+    choices = [r["choices"] for r in ds]
+    return questions, correct_letters, choices
+
+
+def load_gsm8k_data(
+    split: Literal["train", "test"] = "test",
+) -> tuple[list[str], list[str]]:
+    from datasets import load_dataset
+    ds = load_dataset("gsm8k", "main", split=split)
+    questions = [r["question"] for r in ds]
+    answers = [r["answer"].split("####")[-1].strip() for r in ds]
+    return questions, answers
+
+
 def load_tqa_correct_answers(questions: list[str]) -> list[str]:
     data_dir = get_project_dir() / 'data' / 'truthfulqa' / 'texts'
     df = pd.read_json(data_dir / 'correct_answers.jsonl', lines = True, orient = 'records')
