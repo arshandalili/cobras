@@ -16,7 +16,6 @@ from transformers import GenerationConfig
 from ._config import _DEFAULT_SAMPLING_PARAMS, _FULL_LLM_NAMES, _DEFAULT_CHAT_TEMPLATE
 from ..steer import get_steer_model
 
-
 class HuggingFaceLM:
     def __init__(
         self,
@@ -30,21 +29,45 @@ class HuggingFaceLM:
     ):
         # set device and dtype
         if device is None:
-           device = "auto" if torch.cuda.is_available() else "cpu"
+            device = "cuda:0" if torch.cuda.is_available() else "cpu"
+
+        self.device = device
         self.dtype = dtype
-        
-        # set model and tokenizer
+
+        model_path = (
+            _FULL_LLM_NAMES[model_name]
+            if model_name in _FULL_LLM_NAMES
+            else model_name
+        )
+
+        # Use HF layer sharding only when explicitly requested.
+        if device == "auto":
+            device_map = "auto"
+        else:
+            device_map = None
+
+        # set model
         self.model: PreTrainedModel = AutoModelForCausalLM.from_pretrained(
-            _FULL_LLM_NAMES[model_name] if model_name in _FULL_LLM_NAMES.keys() else model_name, 
-            device_map = device, 
-            torch_dtype = self.dtype,
-            # trust_remote_code=True, 
+            model_path,
+            device_map=device_map,
+            torch_dtype=self.dtype,
+            # trust_remote_code=True,
         )
+
+        # If not using device_map="auto", manually move full model to target device.
+        if device != "auto":
+            self.model.to(device)
+
+        self.model.eval()
+        self.model.config.use_cache = True
+
+        # set tokenizer
+        # Tokenizer does not use device_map or torch_dtype.
         self.tokenizer: PreTrainedTokenizer = AutoTokenizer.from_pretrained(
-            _FULL_LLM_NAMES[model_name] if model_name in _FULL_LLM_NAMES.keys() else model_name, 
-            device_map = device, 
-            torch_dtype = self.dtype,
+            model_path,
+            # trust_remote_code=True,
         )
+
         self.tokenizer.pad_token = self.tokenizer.eos_token
         self.tokenizer.padding_side = 'left' 
         self.model.config.pad_token_id = self.model.config.eos_token_id
@@ -66,13 +89,14 @@ class HuggingFaceLM:
             )
         else:
             self.default_generation_config = default_generation_config
-        
+            self.default_generation_config.use_cache = True
+
         # set steer model
         if steer_name is not None and steer_name != "NoSteer":
             self.steer_model = get_steer_model(steer_name, **steer_model_kwargs)
         else:
             self.steer_model = None
-            
+
         self.steer_layer_idx = steer_layer_idx
     
     

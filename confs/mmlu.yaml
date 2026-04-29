@@ -7,9 +7,9 @@ defaults:
 model: Llama3.1-8B-Base
 dataset: mmlu
 layer_idx: 13
-batch_size: 10
+batch_size: 16
 seed: 42
-num_examples: 500
+num_examples: 15000
 
 hydra:
   run:

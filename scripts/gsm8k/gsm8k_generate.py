@@ -17,7 +17,7 @@ from odesteer.utils.data import (
     load_gsm8k_data,
 )
 
-_N_SHOTS = 8
+_N_SHOTS = 5
 
 
 def build_few_shot_str(train_questions: list[str], train_answers_raw: list[str]) -> str:

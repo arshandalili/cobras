@@ -7,9 +7,9 @@ defaults:
 model: Llama3.1-8B-Base
 dataset: gsm8k
 layer_idx: 13
-batch_size: 10
+batch_size: 64
 seed: 42
-num_examples: 100
+num_examples: 2000
 
 hydra:
   run:

@@ -1,9 +1,9 @@
 import argparse
+from decimal import Decimal, InvalidOperation
 import re
 from pathlib import Path
 
 import pandas as pd
-
 from odesteer.utils import get_project_dir
 
 gsm8k_df_cols = ["Model", "Steering Method", "Accuracy", "N", "N_parsed"]
@@ -21,9 +21,9 @@ def extract_answer(output: str) -> str | None:
 def normalize(ans: str) -> str:
     ans = ans.replace(",", "").strip()
     try:
-        v = float(ans)
-        return str(int(v)) if v == int(v) else str(v)
-    except ValueError:
+        v = Decimal(ans)
+        return str(int(v)) if v == v.to_integral_value() else format(v.normalize(), "f")
+    except (InvalidOperation, ValueError):
         return ans
 
 def parse_args():
@@ -38,7 +38,7 @@ def main():
     output_dir = get_project_dir() / "results" / "gsm8k"
     raw_dir = output_dir / "raw_outputs" / args.model
     eval_path = (
-        output_dir / "eval_results"
+        output_dir / "eval_results" / "stat_results" 
         / f"{args.model}-l{args.layer_idx}-GSM8K-seed{args.seed}.csv"
     )
     eval_path.parent.mkdir(parents=True, exist_ok=True)
