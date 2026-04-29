@@ -13,7 +13,6 @@ from odesteer.lm import HuggingFaceLM, batch_generate
 from odesteer.utils import get_project_dir
 from odesteer.utils.data import (
     load_tqa_gen_data_all_splits,
-    load_tqa_gen_data_all_splits_with_idx,
     load_gsm8k_data,
 )
 
@@ -64,15 +63,8 @@ def main(cfg: DictConfig):
         )
 
         print("→ Fitting steer on all TruthfulQA data ...")
-        uses_paired = getattr(model.steer_model, "needs_paired_idx", False)
-        if uses_paired:
-            pos_X, neg_X, pos_q_idx, neg_q_idx = load_tqa_gen_data_all_splits_with_idx(
-                cfg.model, cfg.layer_idx
-            )
-            model.fit_steer_model(pos_X, neg_X, pos_q_idx=pos_q_idx, neg_q_idx=neg_q_idx)
-        else:
-            pos_X, neg_X = load_tqa_gen_data_all_splits(cfg.model, cfg.layer_idx)
-            model.fit_steer_model(pos_X, neg_X)
+        pos_X, neg_X = load_tqa_gen_data_all_splits(cfg.model, cfg.layer_idx)
+        model.fit_steer_model(pos_X, neg_X)
 
         print("→ Loading GSM8K data ...")
         from datasets import load_dataset

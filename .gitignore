@@ -29,3 +29,5 @@ activations/
 *.csv
 *.jsonl
 .DS_Store
+
+.history/
