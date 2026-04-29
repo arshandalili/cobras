@@ -37,7 +37,7 @@ METHOD_ORDER = [
     "TruthFlow",
     "ODESteer",
     "SphericalSteer",
-    "CoBRAS (Ours)",
+    "COBRAS (Ours)",
 ]
 
 METHOD_MAP = {
@@ -54,7 +54,7 @@ METHOD_MAP = {
     "TruthFlow": "TruthFlow",
     "ODESteer": "ODESteer",
     "SphericalSteer": "SphericalSteer",
-    "CoBRAS": "CoBRAS (Ours)",
+    "COBRAS": "COBRAS (Ours)",
 }
 
 MODEL_DISPLAY_MAP = {
@@ -262,7 +262,7 @@ def build_row(
     true: str,
     info: str,
 ) -> str:
-    method_tex = "\\textbf{CoBRAS (Ours)}" if method == "CoBRAS (Ours)" else method
+    method_tex = "\\textbf{COBRAS (Ours)}" if method == "COBRAS (Ours)" else method
 
     if method == "Original":
         return (

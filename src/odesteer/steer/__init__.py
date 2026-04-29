@@ -12,26 +12,24 @@ from ._lin_act import LinAcT
 
 # ODESteer
 from ._ode_steer import BaseODESteer, ODESteer, RFFODESteer
-from ._step_ode_steer import BaseStepODESteer, StepODESteer, RFFStepODESteer    
+from ._step_ode_steer import BaseStepODESteer, StepODESteer, RFFStepODESteer  
+
+# Spherical Steer
 from ._spherical_steer import SphericalSteer  
 
-# SphereSteer
-from ._sphere_steer import SphereSteer
-from ._sphere_steer_v2 import SphereSteerV2
-from ._sphere_steer_v3 import SphereSteerV3
-from ._sphere_steer_v4 import SphereSteerV4
+#COBRAS
+from ._cobras import COBRAS
 
 
 __all__ = [
     'Steer', 'VecSteer',
     # Baselines
-    'RepE', 'CAA', 'ITI', 'MiMiC', 'LinAcT', 'SphericalSteer'
+    'RepE', 'CAA', 'ITI', 'MiMiC', 'LinAcT', 'SphericalSteer',
     # ODESteer
     'BaseODESteer', 'ODESteer', 'RFFODESteer',
     'BaseStepODESteer', 'StepODESteer', 'RFFStepODESteer',
-    # SphereSteer
-    'SphereSteer', 'SphereSteerV2', 'SphereSteerV3',
-    'SphereSteerV4',
+    # COBRAS
+    'COBRAS',
 ]
 
 def get_steer_model(name: str, *args, **kwargs) -> type[Steer]:
