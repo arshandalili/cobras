@@ -129,8 +129,9 @@ class COBRAS(Steer):
     def _field(self, q: Tensor) -> Tensor:
         R = self.R
         log_psi_q = self._query_log_psi(q)  # [B, N_pos] — adapts to current q
+        log_phi_q = self._query_log_phi(q)   # [B, N_neg] — symmetric, adapts to current q
         V_pos = self._weighted_centroid(q, self.h_pos, log_psi_q)
-        V_neg = self._weighted_centroid(q, self.h_neg, self.log_phi)
+        V_neg = self._weighted_centroid(q, self.h_neg, log_phi_q)
         V = V_pos - V_neg
         return V - (V * q).sum(-1, keepdim=True) / (R ** 2) * q
 
