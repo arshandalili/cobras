@@ -2,23 +2,29 @@
 set -euo pipefail
 
 # Usage:
-#   bash runner.sh [REPEAT]
+#   bash experiments/runner.sh [REPEAT]
 #
 # Examples:
-#   uv run bash runner.sh
-#   uv run bash runner.sh 5
-#   RUN_UF=0 uv run bash runner.sh
-#   RUN_TQA=0 uv run bash runner.sh
-#   RUN_TQA=0 RUN_UF=0 RUN_MMLU=1 RUN_GSM8k=0 uv run bash runner.sh 1
-#   RUN_TQA=0 RUN_UF=0 RUN_MMLU=0 RUN_GSM8k=1 uv run bash runner.sh 1
+#
+#   BASELINES ::: 
+# 
+#   RUN_UF=0 uv run bash experiments/runner.sh 3
+#   RUN_TQA=1 uv run bash experiments/runner.sh 3
+#   RUN_TOXICITY=1 uv run bash experiments/runner.sh 3
+#
+#   OOD EVALS :::
+#
+#   RUN_MMLU=1 uv run bash experiments/runner.sh 1
+#   RUN_GSM8K=1 uv run bashexperiments/runner.sh 1
 # Note: You can set the environment variables RUN_TQA, RUN_UF, and RUN_MMLU to control which experiments to run. 
-# By default, all experiments will be run.
+# By default, none of the experiments will be run.
 
 REPEAT="${1:-3}"
-RUN_TQA="${RUN_TQA:-1}"
-RUN_UF="${RUN_UF:-1}"
-RUN_MMLU="${RUN_MMLU:-1}"
-RUN_GSM8K="${RUN_GSM8K:-1}"
+RUN_TQA="${RUN_TQA:-0}"
+RUN_UF="${RUN_UF:-0}"
+RUN_MMLU="${RUN_MMLU:-0}"
+RUN_GSM8K="${RUN_GSM8K:-0}"
+RUN_TOXICITY="${RUN_TOXICITY:-0}"
 
 declare -A MODEL_TO_LAYER=(
   ["Llama3.1-8B-Base"]=13
@@ -55,21 +61,27 @@ for model in "${MODELS[@]}"; do
   for t in ${t_values}; do
     if [[ "${RUN_TQA}" == "1" ]]; then
       echo "===== Running TruthfulQA | MODEL=${model} | LAYER=${layer_idx} | T=${t} ====="
-      uv run bash experiments_truthfulqa.sh "${model}" "${layer_idx}" "${REPEAT}" "${t}"
+      uv run bash experiments/experiments_truthfulqa.sh "${model}" "${layer_idx}" "${REPEAT}" "${t}"
     fi
 
     if [[ "${RUN_UF}" == "1" ]]; then
       echo "===== Running UltraFeedback | MODEL=${model} | LAYER=${layer_idx} | T=${t} ====="
-      uv run bash experiments_ultrafeedback.sh "${model}" "${layer_idx}" "${REPEAT}" "${t}"
+      uv run bash experiments/experiments_ultrafeedback.sh "${model}" "${layer_idx}" "${REPEAT}" "${t}"
+    fi
+  
+    if [[ "${RUN_TOXICITY}" == "1" ]]; then
+      echo "===== Running TOXICITY | MODEL=${model} | LAYER=${layer_idx} | T=${t} ====="
+      uv run bash experiments/experiments_toxicity.sh "${model}" "${layer_idx}" "${REPEAT}" "${t}"
     fi
 
     if [[ "${RUN_MMLU}" == "1" ]]; then
       echo "===== Running MMLU OOD | MODEL=${model} | LAYER=${layer_idx} | T=${t} ====="
-      uv run bash experiments_mmlu.sh "${model}" "${layer_idx}" "${REPEAT}" "${t}"
+      uv run bash experiments/experiments_mmlu.sh "${model}" "${layer_idx}" "${REPEAT}" "${t}"
     fi
+
     if [[ "${RUN_GSM8K}" == "1" ]]; then
       echo "===== Running GSM8K OOD | MODEL=${model} | LAYER=${layer_idx} | T=${t} ====="
-      uv run bash experiments_gsm8k.sh "${model}" "${layer_idx}" "${REPEAT}" "${t}"
+      uv run bash experiments/experiments_gsm8k.sh "${model}" "${layer_idx}" "${REPEAT}" "${t}"
     fi
   done
 done
