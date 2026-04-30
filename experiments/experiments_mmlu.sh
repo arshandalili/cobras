@@ -54,6 +54,10 @@ for ((i=0; i<REPEAT; i++)); do
   uv run python -u scripts/mmlu/mmlu_generate.py \
     model="${MODEL}" layer_idx="${LAYER_IDX}" steer=SphericalSteer steer.T="${T}" seed="${SEED}"
 
+  echo "===== Seed: ${SEED} | COBRAS ====="
+  uv run python -u scripts/mmlu/mmlu_generate.py \
+    model="${MODEL}" layer_idx="${LAYER_IDX}" steer=COBRAS steer.T="${T}" seed="${SEED}"
+
   echo "===== Evaluating the generated responses ====="
   uv run python -u scripts/mmlu/mmlu_eval.py \
     -m "${MODEL}" -l "${LAYER_IDX}" --seed "${SEED}"

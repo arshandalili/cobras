@@ -71,6 +71,12 @@ for ((i=0; i<REPEAT; i++)); do
   uv run python -u scripts/gsm8k/gsm8k_generate_merge.py \
     model="${MODEL}" layer_idx="${LAYER_IDX}" steer=SphericalSteer steer.T="${T}" seed="${SEED}"
 
+  echo "===== Seed: ${SEED} | COBRAS ====="
+  uv run accelerate launch --num_processes 3 scripts/gsm8k/gsm8k_generate_fast.py \
+    model="${MODEL}" layer_idx="${LAYER_IDX}" steer=COBRAS steer.T="${T}" seed="${SEED}"
+  uv run python -u scripts/gsm8k/gsm8k_generate_merge.py \
+    model="${MODEL}" layer_idx="${LAYER_IDX}" steer=COBRAS steer.T="${T}" seed="${SEED}"
+
   echo "===== Evaluating the generated responses ====="
   uv run python -u scripts/gsm8k/gsm8k_eval.py \
     -m "${MODEL}" -l "${LAYER_IDX}" --seed "${SEED}"

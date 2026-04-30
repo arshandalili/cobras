@@ -7,7 +7,7 @@ defaults:
 model: Llama3.1-8B-Base
 dataset: ultrafeedback
 layer_idx: 13
-batch_size: 10
+batch_size: 16
 seed: 42
 
 hydra:
