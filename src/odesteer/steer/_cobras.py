@@ -33,7 +33,7 @@ class COBRAS(Steer):
         self.max_iters = int(max_iters)
         self.vmf_kappa = float(vmf_kappa)
         self.vmf_beta = float(vmf_beta)
-        self.abstain_percentile = abstain_percentile
+        self.abstain_percentile = None if (abstain_percentile==1.0) else float(abstain_percentile)
         self.abstain_k = int(abstain_k)
         self.abstain_sharpness = float(abstain_sharpness)
 
