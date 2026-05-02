@@ -21,6 +21,9 @@ class COBRAS(Steer):
         max_iters: int = 10,
         vmf_kappa: float | None = None,
         vmf_beta: float = 0.0,
+        abstain_percentile: float | None = None,
+        abstain_k: int = 32,
+        abstain_sharpness: float = 50.0,
     ) -> None:
         super().__init__()
         self.k_bw = int(k_bw)
@@ -30,8 +33,12 @@ class COBRAS(Steer):
         self.max_iters = int(max_iters)
         self.vmf_kappa = float(vmf_kappa)
         self.vmf_beta = float(vmf_beta)
+        self.abstain_percentile = abstain_percentile
+        self.abstain_k = int(abstain_k)
+        self.abstain_sharpness = float(abstain_sharpness)
 
         self.R: float | None = None
+        self.rho_ref: float | None = None
         self.sigma2: float | None = None
         self.h_pos: Tensor | None = None
         self.h_neg: Tensor | None = None
@@ -60,6 +67,10 @@ class COBRAS(Steer):
         cost = (R * torch.acos(cos_np)).pow(2) / (2.0 * self.sigma2)
         self.cost = cost
         self.log_psi, self.log_phi = self._sinkhorn(cost, self.n_sinkhorn)
+
+        if self.abstain_percentile is not None:
+            neg_rho = knn_geodesic_dist(self.h_neg, R, k=min(self.abstain_k, self.h_neg.size(0) - 1))
+            self.rho_ref = float(torch.quantile(neg_rho.float(), self.abstain_percentile).item())
 
         diff = self.h_pos.mean(0) - self.h_neg.mean(0)
         self.mu_T = diff / diff.norm().clamp(min=_EPS)
@@ -142,6 +153,14 @@ class COBRAS(Steer):
         strength = ((delta - self.vmf_beta) / (1.0 - self.vmf_beta)).clamp(0.0, 1.0)
         return strength, strength > 0
 
+    def _abstain_gate(self, q: Tensor) -> Tensor:
+        cos_qn = (q @ self.h_neg.T) / (self.R ** 2)
+        cos_qn = cos_qn.clamp(-1.0 + _EPS, 1.0 - _EPS)
+        dist_qn = self.R * torch.acos(cos_qn)
+        k = min(self.abstain_k, self.h_neg.size(0))
+        rho = dist_qn.topk(k, dim=1, largest=False).values[:, -1]
+        return 1.0 / (1.0 + (rho / self.rho_ref) ** self.abstain_sharpness)
+
     def vector_field(self, X: Tensor) -> Tensor:
         assert self.h_pos is not None
         self._to(X.device, X.dtype)
@@ -159,6 +178,9 @@ class COBRAS(Steer):
         p0 = X * (R / X_norm)
 
         strength, active = self._compute_strength(p0)
+        if self.abstain_percentile is not None and self.rho_ref is not None:
+            strength = strength * self._abstain_gate(p0)
+            active = strength > 0
         cos_T0 = ((p0 / R) * self.mu_T).sum(-1).clamp(-1 + _EPS, 1 - _EPS)
         theta_0 = torch.acos(cos_T0)
         dt_vec = (T * strength * theta_0 * R) / self.max_iters

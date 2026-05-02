@@ -7,6 +7,9 @@ kwargs:
   max_iters: 10
   vmf_kappa: 20
   vmf_beta: 0.0
+  abstain_percentile: 0.995
+  abstain_k: 32
+  abstain_sharpness: 50.0
 T: 0.5
 
-name: ${steer.type}-k_bw${steer.kwargs.k_bw}-sink${steer.kwargs.n_sinkhorn}-alpha${steer.kwargs.alpha_sigma}-eps${steer.kwargs.epsilon}-iters${steer.kwargs.max_iters}-kappa${steer.kwargs.vmf_kappa}-T${steer.T}
+name: ${steer.type}-k_bw${steer.kwargs.k_bw}-sink${steer.kwargs.n_sinkhorn}-alpha${steer.kwargs.alpha_sigma}-eps${steer.kwargs.epsilon}-iters${steer.kwargs.max_iters}-kappa${steer.kwargs.vmf_kappa}-abst${steer.kwargs.abstain_percentile}-k${steer.kwargs.abstain_k}-sh${steer.kwargs.abstain_sharpness}-T${steer.T}
