@@ -310,11 +310,13 @@ class HuggingFaceLM:
         return {i: hidden_states[i][:, -1, :] for i in layer_idx}
     
     def register_steer_hook(
-        self, 
+        self,
         steer_position_idx: int,
-        steer_kwargs: dict,  
+        steer_kwargs: dict,
     ):
         assert hasattr(self, 'steer_model')
+        if hasattr(self.steer_model, 'reset_gate'):
+            self.steer_model.reset_gate()
         self.hooks = []
         target_layer = self._get_target_layer()
         handle = target_layer.register_forward_hook(partial(

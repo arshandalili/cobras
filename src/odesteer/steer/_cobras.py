@@ -47,6 +47,10 @@ class COBRAS(Steer):
         self.log_phi: Tensor | None = None
         self.cost: Tensor | None = None
         self._device: torch.device | None = None
+        self._gate_cache: Tensor | None = None
+
+    def reset_gate(self) -> None:
+        self._gate_cache = None
 
     @torch.no_grad()
     def fit(self, pos_X: Tensor, neg_X: Tensor) -> "COBRAS":
@@ -179,7 +183,9 @@ class COBRAS(Steer):
 
         strength, active = self._compute_strength(p0)
         if self.abstain_percentile is not None and self.rho_ref is not None:
-            strength = strength * self._abstain_gate(p0)
+            if self._gate_cache is None:
+                self._gate_cache = self._abstain_gate(p0)
+            strength = strength * self._gate_cache
             active = strength > 0
         cos_T0 = ((p0 / R) * self.mu_T).sum(-1).clamp(-1 + _EPS, 1 - _EPS)
         theta_0 = torch.acos(cos_T0)
