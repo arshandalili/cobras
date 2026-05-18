@@ -269,17 +269,9 @@ cobras/
 └── pyproject.toml          # Project dependencies
 ```
 
-## Citation
-
-```bibtex
-@article{zhao2026odesteer,
-  title={ODESteer: A Unified ODE-Based Steering Framework for LLM Alignment},
-  author={Zhao*, Hongjue and Sun*, Haosen and Kong, Jiangtao and Li, Xiaochang and Wang, Qineng and Jiang, Liwei and Zhu, Qi and Abdelzaher, Tarek and Choi, Yejin and Li†, Manling and Shao†, Huajie},
-  journal={arXiv preprint arXiv:2602.17560},
-  year={2026}
-}
-```
-
 ## Acknowledgements
 
-This codebase is largely adapted from the official **ODESteer** implementation: [ZhaoHongjue/odesteer](https://github.com/ZhaoHongjue/odesteer) ([paper](https://arxiv.org/abs/2602.17560)). The data pipelines, model wrappers, baseline integrations, and Hydra-based experiment scaffolding all originate from that repository; COBRAS adds the Riemannian conditional optimal-bridge steering method on top. Many thanks to the ODESteer authors for releasing their code.
+This codebase is largely adapted from the official **ODESteer** implementation. The data pipelines, model wrappers, baseline integrations, and Hydra-based experiment scaffolding all originate from that repository; COBRAS adds the Riemannian conditional optimal-bridge steering method on top. Many thanks to the ODESteer authors for releasing their code.
+
+- Code: https://github.com/ZhaoHongjue/odesteer
+- Paper: https://arxiv.org/abs/2602.17560
