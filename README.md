@@ -1,12 +1,6 @@
-# ODESteer: A Unified ODE-Based Steering Framework for LLM Alignment
+# COBRAS: Conditional Optimal Bridge for Riemannian Activation Steering
 
-Official implementation of the paper **"ODESteer: A Unified ODE-Based Steering Framework for LLM Alignment"** (ICLR 2026)
-
-This repository provides code for ODESteer, a novel activation steering approach based on ordinary differential equations and barrier functions from control theory.
-
-[Paper](https://openreview.net/forum?id=CFewUmgIIL), [Website](https://odesteer.github.io/)
-
-![Thumbnail](assets/thumbnail.png)
+Implementation of the paper **"COBRAS: Conditional Optimal Bridge for Riemannian Activation Steering"**
 
 ## Installation
 
