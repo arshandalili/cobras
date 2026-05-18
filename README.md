@@ -271,7 +271,7 @@ cobras/
 
 ## Acknowledgements
 
-This codebase is largely adapted from the official **ODESteer** implementation. The data pipelines, model wrappers, baseline integrations, and Hydra-based experiment scaffolding all originate from that repository; COBRAS adds the Riemannian conditional optimal-bridge steering method on top. Many thanks to the ODESteer authors for releasing their code.
+This codebase is largely adapted from the official **ODESteer** implementation. The data pipelines, model wrappers, baseline integrations, and Hydra-based experiment scaffolding all originate from that repository; on top of it, COBRAS adds the Riemannian conditional optimal-bridge steering method and the out-of-distribution evaluation suite (MMLU and GSM8K generation, evaluation, and `experiments/` sweep scripts). Many thanks to the ODESteer authors for releasing their code.
 
 - Code: https://github.com/ZhaoHongjue/odesteer
 - Paper: https://arxiv.org/abs/2602.17560
