@@ -4,7 +4,7 @@ from typing import Tuple
 import numpy as np
 import matplotlib.pyplot as plt
 
-from odesteer.utils import get_project_dir
+from cobras.utils import get_project_dir
 import pandas as pd
 
 SEED = 20250415

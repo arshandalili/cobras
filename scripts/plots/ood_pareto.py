@@ -13,7 +13,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from odesteer.utils import get_project_dir
+from cobras.utils import get_project_dir
 
 
 TRUTHFULQA_METRICS = [

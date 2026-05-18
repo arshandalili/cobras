@@ -4,8 +4,8 @@ from tqdm import trange
 import pandas as pd
 import torch
 
-from odesteer.utils import get_project_dir
-from odesteer.lm import HuggingFaceLM
+from cobras.utils import get_project_dir
+from cobras.lm import HuggingFaceLM
 
 
 if __name__ == '__main__':

@@ -12,7 +12,7 @@ import torch
 from datasets import load_dataset
 from transformers import GPT2Tokenizer, GPT2LMHeadModel
 
-from odesteer.utils import get_project_dir
+from cobras.utils import get_project_dir
 
 
 SEED = 20250415

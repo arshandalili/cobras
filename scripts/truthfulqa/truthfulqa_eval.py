@@ -5,8 +5,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from odesteer.utils import get_project_dir
-from odesteer.utils.metric import QualityEvaluator, TruthfulQAJudge
+from cobras.utils import get_project_dir
+from cobras.utils.metric import QualityEvaluator, TruthfulQAJudge
 
 
 truthfulqa_df_cols = [

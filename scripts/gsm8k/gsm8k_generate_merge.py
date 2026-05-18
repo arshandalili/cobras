@@ -4,7 +4,7 @@ from pathlib import Path
 import json
 from lightning import seed_everything
 
-from odesteer.utils import get_project_dir
+from cobras.utils import get_project_dir
 
 
 @hydra.main(

@@ -7,9 +7,9 @@ import torch
 from transformers import GenerationConfig
 from lightning import seed_everything
 
-from odesteer.lm import HuggingFaceLM, batch_generate
-from odesteer.utils import get_project_dir
-from odesteer.utils.data import load_jigsaw_activations, load_rtp_prompts
+from cobras.lm import HuggingFaceLM, batch_generate
+from cobras.utils import get_project_dir
+from cobras.utils.data import load_jigsaw_activations, load_rtp_prompts
 
 
 @hydra.main(

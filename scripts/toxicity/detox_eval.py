@@ -6,8 +6,8 @@ from typing import Tuple, List
 import numpy as np
 import pandas as pd
 
-from odesteer.utils import get_project_dir
-from odesteer.utils.metric import QualityEvaluator, ToxicityEvaluator
+from cobras.utils import get_project_dir
+from cobras.utils.metric import QualityEvaluator, ToxicityEvaluator
 
 
 toxicity_df_cols = [

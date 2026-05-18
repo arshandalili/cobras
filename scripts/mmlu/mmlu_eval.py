@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from odesteer.utils import get_project_dir
+from cobras.utils import get_project_dir
 
 mmlu_df_cols = ["Model", "Steering Method", "Accuracy", "N"]
 

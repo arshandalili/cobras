@@ -1,5 +1,5 @@
 import pandas as pd
-from odesteer.utils import get_project_dir
+from cobras.utils import get_project_dir
 
 def format_jigsaw_realtoxicprompts(non_toxic_df: pd.DataFrame, toxic_df: pd.DataFrame) -> pd.DataFrame:
     df = pd.concat([non_toxic_df, toxic_df], axis = 0)

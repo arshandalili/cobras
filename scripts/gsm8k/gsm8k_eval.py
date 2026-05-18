@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 
 import pandas as pd
-from odesteer.utils import get_project_dir
+from cobras.utils import get_project_dir
 
 gsm8k_df_cols = ["Model", "Steering Method", "Accuracy", "N", "N_parsed"]
 

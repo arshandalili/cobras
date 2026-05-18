@@ -1,7 +1,7 @@
 import pandas as pd
 from datasets import load_dataset
 
-from odesteer.utils import get_project_dir
+from cobras.utils import get_project_dir
 
 
 gen_dir = get_project_dir() / 'data' / 'ultrafeedback' / 'texts'

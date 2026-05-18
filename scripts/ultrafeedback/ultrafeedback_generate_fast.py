@@ -10,9 +10,9 @@ from transformers import GenerationConfig
 from lightning import seed_everything
 from accelerate import Accelerator
 
-from odesteer.lm import HuggingFaceLM, batch_generate
-from odesteer.utils import get_project_dir
-from odesteer.utils.data import load_ultrafeedback_data, load_ultrafeedback_prompts
+from cobras.lm import HuggingFaceLM, batch_generate
+from cobras.utils import get_project_dir
+from cobras.utils.data import load_ultrafeedback_data, load_ultrafeedback_prompts
 
 
 @hydra.main(

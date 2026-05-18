@@ -4,8 +4,8 @@ from tqdm import trange
 import pandas as pd
 import torch
 
-from odesteer.lm import HuggingFaceLM
-from odesteer.utils import get_project_dir
+from cobras.lm import HuggingFaceLM
+from cobras.utils import get_project_dir
 
 
 @torch.no_grad()
