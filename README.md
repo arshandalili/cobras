@@ -92,7 +92,7 @@ uv run python -u scripts/ultrafeedback/ultrafeedback_eval.py -m <MODEL> -l <LAYE
 ```
 The command will automatically evaluate all steering methods with the specific model and layer.
 
-**Example - Compare ODESteer with baseline methods**:
+**Example - Compare COBRAS with baseline methods**:
 ```bash
 # No steering (baseline)
 uv run python -u scripts/ultrafeedback/ultrafeedback_generate.py \
@@ -102,9 +102,9 @@ uv run python -u scripts/ultrafeedback/ultrafeedback_generate.py \
 uv run python -u scripts/ultrafeedback/ultrafeedback_generate.py \
     model=Llama3.1-8B-Base layer_idx=13 steer=CAA steer.T=1.0
 
-# ODESteer (our method)
+# COBRAS (our method)
 uv run python -u scripts/ultrafeedback/ultrafeedback_generate.py \
-    model=Llama3.1-8B-Base layer_idx=13 steer=ODESteer steer.T=5.0
+    model=Llama3.1-8B-Base layer_idx=13 steer=COBRAS steer.T=0.5
 
 # Evaluate
 uv run python -u scripts/ultrafeedback/ultrafeedback_eval.py -m Llama3.1-8B-Base -l 13 -d
@@ -197,7 +197,7 @@ To run COBRAS and the baselines on a new dataset `<NAME>`:
 
 4. **Hydra config.** Add `confs/<NAME>.yaml` mirroring [confs/truthfulqa.yaml](confs/truthfulqa.yaml); set `dataset: <NAME>` and the default model/layer.
 
-5. **Generate + eval scripts.** Create `scripts/<NAME>/<NAME>_generate.py` (Hydra entrypoint reading `confs/<NAME>.yaml`) and `scripts/<NAME>/<NAME>_eval.py`. Reuse the loaders in `src/odesteer/utils/data.py` — add a `load_<NAME>_data` helper if needed.
+5. **Generate + eval scripts.** Create `scripts/<NAME>/<NAME>_generate.py` (Hydra entrypoint reading `confs/<NAME>.yaml`) and `scripts/<NAME>/<NAME>_eval.py`. Reuse the loaders in `src/cobras/utils/data.py` — add a `load_<NAME>_data` helper if needed.
 
 6. **Experiment runner.** Add `experiments/experiments_<NAME>.sh` (copy from `experiments_truthfulqa.sh`) and wire a `RUN_<NAME>` branch into `experiments/runner.sh`.
 
