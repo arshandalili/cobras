@@ -28,6 +28,10 @@ _tqa_few_shots = [
     {"role": "user",        "content": "Where were the 1992 Olympics held?"},
     {"role": "assistant",   "content": "The 1992 Olympics were held in Barcelona, Spain."},
 ]
+_tqa_qa_primer = "\n\n".join(
+    f"Q: {q['content']}\nA: {a['content']}"
+    for q, a in zip(_tqa_few_shots[::2], _tqa_few_shots[1::2])
+)
 
 
 class TQADataLoader:
@@ -195,6 +199,29 @@ def load_gsm8k_data(
     questions = [r["question"] for r in ds]
     answers = [r["answer"].split("####")[-1].strip() for r in ds]
     return questions, answers
+
+
+def format_qa_prompt(question: str) -> str:
+    """Closed-book QA prompt used by ITI: instruction prompt + TruthfulQA QA primer."""
+    return f"{_tqa_system_prompt}\n\n{_tqa_qa_primer}\n\nQ: {question}\nA:"
+
+
+def load_nq_data() -> tuple[list[str], list[list[str]], list[str]]:
+    from datasets import load_dataset
+    ds = load_dataset("OamPatel/iti_nq_open_val", split="validation")
+    questions = [r["question"] for r in ds]
+    correct_answers = [list(r["answer"]) for r in ds]
+    false_answers = [r["false_answer"] for r in ds]
+    return questions, correct_answers, false_answers
+
+
+def load_triviaqa_data() -> tuple[list[str], list[list[str]], list[str]]:
+    from datasets import load_dataset
+    ds = load_dataset("OamPatel/iti_trivia_qa_val", split="validation")
+    questions = [r["question"] for r in ds]
+    correct_answers = [list(r["answer"]["aliases"]) for r in ds]
+    false_answers = [r["false_answer"] for r in ds]
+    return questions, correct_answers, false_answers
 
 
 def load_tqa_correct_answers(questions: list[str]) -> list[str]:

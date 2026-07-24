@@ -25,6 +25,14 @@ MMLU_METRICS = [
     "Accuracy"
 ]
 
+# all OOD tasks report a single accuracy, so they share the MMLU aggregation path
+OOD_TASKS = {
+    "mmlu": "MMLU",
+    "gsm8k": "GSM8k",
+    "nq": "NQ",
+    "triviaqa": "TriviaQA",
+}
+
 METHOD_ORDER = [
     "Original",
     "RepE",
@@ -685,14 +693,16 @@ def filter_to_shortlisted_t(
 def main() -> None:
     uf_df = load_results("ultrafeedback")
     tqa_df = load_results("truthfulqa")
-    mmlu_df = load_results("mmlu")
-    gsm8k_df = load_results("gsm8k")
 
     uf_agg = aggregate_ultrafeedback(uf_df)
     tqa_agg = aggregate_truthfulqa(tqa_df)
-    mmlu_agg = aggregate_mmlu(mmlu_df) 
-    # can reuse mmlu fn because gsm8k and mmlu share the same metrics
-    gsm8k_agg = aggregate_mmlu(gsm8k_df) 
+
+    ood_aggs = {}
+    for task, label in OOD_TASKS.items():
+        try:
+            ood_aggs[label] = aggregate_mmlu(load_results(task))
+        except FileNotFoundError:
+            print(f"No {label} results found, skipping.")
 
     agg_df = merge_aggregates(uf_agg, tqa_agg)
 
@@ -719,54 +729,30 @@ def main() -> None:
     print(display_df.sort_values(['ModelDisplay', 'Method', 'T']).to_string(index=False))
 
     tqa_agg_shortlisted = filter_to_shortlisted_t(tqa_agg, SHORTLISTED_T_MAP)
-    mmlu_agg_shortlisted = filter_to_shortlisted_t(mmlu_agg, SHORTLISTED_T_MAP)
 
-    best_t_from_tqa, mmlu_at_best_tqa_t = select_best_t_and_filter_target(
-        reference_df=tqa_agg_shortlisted,
-        target_df=mmlu_agg_shortlisted,
-        metric="True * Info",
-        higher_is_better=True,
-    )
+    for label, ood_agg in ood_aggs.items():
+        ood_agg_shortlisted = filter_to_shortlisted_t(ood_agg, SHORTLISTED_T_MAP)
 
-    best_t_from_tqa["TQA_score_at_BestT"] = format_best_metric(best_t_from_tqa, "True * Info")
+        best_t_from_tqa, ood_at_best_tqa_t = select_best_t_and_filter_target(
+            reference_df=tqa_agg_shortlisted,
+            target_df=ood_agg_shortlisted,
+            metric="True * Info",
+            higher_is_better=True,
+        )
 
-    print("Best T chosen from TruthfulQA:")
-    print(
-        best_t_from_tqa[
-            ["ModelDisplay", "Method", "BestT", "TQA_score_at_BestT"]
-        ].sort_values(["ModelDisplay", "Method"]).to_string(index=False)
-    )
+        best_t_from_tqa["TQA_score_at_BestT"] = format_best_metric(best_t_from_tqa, "True * Info")
 
-    print("\nMMLU rows at T selected from TruthfulQA:")
-    print(
-        mmlu_at_best_tqa_t.sort_values(["ModelDisplay", "Method", "T"]).to_string(index=False)
-    )
+        print("Best T chosen from TruthfulQA:")
+        print(
+            best_t_from_tqa[
+                ["ModelDisplay", "Method", "BestT", "TQA_score_at_BestT"]
+            ].sort_values(["ModelDisplay", "Method"]).to_string(index=False)
+        )
 
-
-
-    tqa_agg_shortlisted = filter_to_shortlisted_t(tqa_agg, SHORTLISTED_T_MAP)
-    gsm8k_agg_shortlisted = filter_to_shortlisted_t(gsm8k_agg, SHORTLISTED_T_MAP)
-
-    best_t_from_tqa, gsm8k_at_best_tqa_t = select_best_t_and_filter_target(
-        reference_df=tqa_agg_shortlisted,
-        target_df=gsm8k_agg_shortlisted,
-        metric="True * Info",
-        higher_is_better=True,
-    )
-
-    best_t_from_tqa["TQA_score_at_BestT"] = format_best_metric(best_t_from_tqa, "True * Info")
-
-    print("Best T chosen from TruthfulQA:")
-    print(
-        best_t_from_tqa[
-            ["ModelDisplay", "Method", "BestT", "TQA_score_at_BestT"]
-        ].sort_values(["ModelDisplay", "Method"]).to_string(index=False)
-    )
-
-    print("\nGSM8k rows at T selected from TruthfulQA:")
-    print(
-        gsm8k_at_best_tqa_t.sort_values(["ModelDisplay", "Method", "T"]).to_string(index=False)
-    )
+        print(f"\n{label} rows at T selected from TruthfulQA:")
+        print(
+            ood_at_best_tqa_t.sort_values(["ModelDisplay", "Method", "T"]).to_string(index=False)
+        )
 
     plot_shortlisted_t_sweeps(
         tqa_agg=tqa_agg,

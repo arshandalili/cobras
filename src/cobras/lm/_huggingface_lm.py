@@ -232,8 +232,42 @@ class HuggingFaceLM:
             choice_log_prob = token_log_probs.sum().item()
             choice_log_probs.append(choice_log_prob)
         return torch.tensor(choice_log_probs).softmax(dim = -1)
-    
-    
+
+
+    @torch.no_grad()
+    def score_answers(
+        self,
+        prompt: str,
+        answers: list[str],
+        batch_size: int = 10,
+        steer: bool = False,
+        steer_kwargs: Optional[dict] = {},
+    ) -> list[float]:
+        """Total log probability of each answer as a continuation of `prompt`."""
+        prompt_len = self.tokenizer(prompt, return_tensors = "pt").input_ids.shape[1]
+        texts = [f"{prompt} {answer}" for answer in answers]
+
+        scores = []
+        for i in range(0, len(texts), batch_size):
+            # right padding so that the prompt occupies the same positions in every row
+            inputs = self.tokenizer(
+                texts[i : i + batch_size], return_tensors = "pt",
+                padding = True, padding_side = "right",
+            ).to(self.model.device)
+            if steer and self.steer_model is not None:
+                self.register_steer_prob_hook(prompt_len - 1, steer_kwargs)
+                logits = self.model(**inputs).logits[:, prompt_len - 1 : -1]
+                self.remove_steer_prob_hook()
+            else:
+                logits = self.model(**inputs).logits[:, prompt_len - 1 : -1]
+            answer_ids = inputs.input_ids[:, prompt_len:]
+            log_probs = F.log_softmax(logits, dim = -1)
+            token_log_probs = log_probs.gather(-1, answer_ids.unsqueeze(-1)).squeeze(-1)
+            token_log_probs = token_log_probs * inputs.attention_mask[:, prompt_len:]
+            scores.extend(token_log_probs.sum(dim = -1).tolist())
+        return scores
+
+
     def fit_steer_model(self, *args, **kwargs) -> None: 
         if self.steer_model is None:
             return
@@ -333,6 +367,8 @@ class HuggingFaceLM:
         steer_kwargs: dict,
     ):
         assert hasattr(self, 'steer_model')
+        if hasattr(self.steer_model, 'reset_gate'):
+            self.steer_model.reset_gate()
         self.prob_hooks = []
         target_layer: nn.Module = self._get_target_layer()
         handle = target_layer.register_forward_hook(partial(
@@ -450,3 +486,19 @@ def batch_generate(
         batch_outputs = model.generate(batch_prompts, steer = steer, steer_kwargs = dict(T = T))
         outputs.extend(batch_outputs)
     return outputs
+
+
+def batch_score_answers(
+    model: HuggingFaceLM,
+    prompts: list[str],
+    answers: list[list[str]],
+    T: float = 1.0,
+    batch_size: int = 10,
+):
+    steer = True if model.steer_model is not None else False
+    scores = []
+    for i in trange(len(prompts)):
+        scores.append(model.score_answers(
+            prompts[i], answers[i], batch_size, steer, steer_kwargs = dict(T = T),
+        ))
+    return scores

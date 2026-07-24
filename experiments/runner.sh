@@ -16,7 +16,9 @@ set -euo pipefail
 #
 #   RUN_MMLU=1 uv run bash experiments/runner.sh 1
 #   RUN_GSM8K=1 uv run bashexperiments/runner.sh 1
-# Note: You can set the environment variables RUN_TQA, RUN_UF, and RUN_MMLU to control which experiments to run. 
+#   RUN_NQ=1 uv run bash experiments/runner.sh 1
+#   RUN_TRIVIAQA=1 uv run bash experiments/runner.sh 1
+# Note: You can set the environment variables RUN_TQA, RUN_UF, and RUN_MMLU to control which experiments to run.
 # By default, none of the experiments will be run.
 
 REPEAT="${1:-3}"
@@ -24,6 +26,8 @@ RUN_TQA="${RUN_TQA:-0}"
 RUN_UF="${RUN_UF:-0}"
 RUN_MMLU="${RUN_MMLU:-0}"
 RUN_GSM8K="${RUN_GSM8K:-0}"
+RUN_NQ="${RUN_NQ:-0}"
+RUN_TRIVIAQA="${RUN_TRIVIAQA:-0}"
 RUN_TOXICITY="${RUN_TOXICITY:-0}"
 
 declare -A MODEL_TO_LAYER=(
@@ -82,6 +86,16 @@ for model in "${MODELS[@]}"; do
     if [[ "${RUN_GSM8K}" == "1" ]]; then
       echo "===== Running GSM8K OOD | MODEL=${model} | LAYER=${layer_idx} | T=${t} ====="
       uv run bash experiments/experiments_gsm8k.sh "${model}" "${layer_idx}" "${REPEAT}" "${t}"
+    fi
+
+    if [[ "${RUN_NQ}" == "1" ]]; then
+      echo "===== Running NQ OOD | MODEL=${model} | LAYER=${layer_idx} | T=${t} ====="
+      uv run bash experiments/experiments_nq.sh "${model}" "${layer_idx}" "${REPEAT}" "${t}"
+    fi
+
+    if [[ "${RUN_TRIVIAQA}" == "1" ]]; then
+      echo "===== Running TriviaQA OOD | MODEL=${model} | LAYER=${layer_idx} | T=${t} ====="
+      uv run bash experiments/experiments_triviaqa.sh "${model}" "${layer_idx}" "${REPEAT}" "${t}"
     fi
   done
 done

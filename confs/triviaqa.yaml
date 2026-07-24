@@ -1,0 +1,17 @@
+defaults:
+  - _self_
+  - steer: NoSteer
+  - override hydra/hydra_logging: disabled
+  - override hydra/job_logging: disabled
+
+model: Llama3.1-8B-Base
+dataset: triviaqa
+layer_idx: 13
+batch_size: 16
+seed: 42
+num_examples: 4000
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null

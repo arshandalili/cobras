@@ -143,7 +143,7 @@ uv run python -u scripts/toxicity/detox_generate.py \
 uv run python -u scripts/toxicity/detox_eval.py -m <MODEL> -l <LAYER> -d
 ```
 
-### Out-of-Distribution (MMLU, GSM8K)
+### Out-of-Distribution (MMLU, GSM8K, NQ, TriviaQA)
 
 These tasks check that steering trained on an alignment dataset does not break general capabilities.
 
@@ -163,18 +163,40 @@ uv run python -u scripts/gsm8k/gsm8k_generate_merge.py \
 uv run python -u scripts/gsm8k/gsm8k_eval.py -m <MODEL> -l <LAYER>
 ```
 
+**Natural Questions / TriviaQA** (closed-book multiple-choice transfer eval, following [ITI](https://arxiv.org/abs/2306.03341)):
+```bash
+uv run python -u scripts/nq/nq_generate.py \
+    model=<MODEL> layer_idx=<LAYER> steer=<STEER> steer.T=<T_VALUE>
+uv run python -u scripts/nq/nq_eval.py -m <MODEL> -l <LAYER>
+
+uv run python -u scripts/triviaqa/triviaqa_generate.py \
+    model=<MODEL> layer_idx=<LAYER> steer=<STEER> steer.T=<T_VALUE>
+uv run python -u scripts/triviaqa/triviaqa_eval.py -m <MODEL> -l <LAYER>
+```
+Both use the ITI transfer splits ([`OamPatel/iti_nq_open_val`](https://huggingface.co/datasets/OamPatel/iti_nq_open_val),
+[`OamPatel/iti_trivia_qa_val`](https://huggingface.co/datasets/OamPatel/iti_trivia_qa_val)), which pair each question with
+its gold answers and a GPT-4-written plausible-but-false answer. The model is prompted closed-book with the TruthfulQA
+instruction prompt and QA primer, each candidate answer is scored by its total log-likelihood, and a question counts as
+correct when the top-scoring candidate is a gold answer (ITI: *"if the truthful answer ranks first, it contributes one
+positive"*). NQ gold answers are the `answer` list; TriviaQA gold answers are the full alias list, matching ITI's loaders.
+
+**Caveat on the released splits.** For 35% of TriviaQA questions (7% for NQ) the GPT-4 "false" answer is byte-identical to one of the gold answers, so those items cannot discriminate between methods and are scored correct by the rule above.
+Absolute accuracies on TriviaQA are inflated accordingly; the datasets remain usable for the *relative* comparison between steering methods, which is what these OOD checks are for.
+
 ## Reproducing Paper Experiments
 
 The `experiments/` directory bundles the full sweep used in the paper.
 
 | Script | What it runs |
 |--------|--------------|
-| `experiments/runner.sh` | Top-level driver. Iterates over the four supported models, their recommended layer, and a per-model grid of `T` values, dispatching to the per-task scripts below. Tasks are toggled with env vars: `RUN_TQA`, `RUN_UF`, `RUN_TOXICITY`, `RUN_MMLU`, `RUN_GSM8K`. |
+| `experiments/runner.sh` | Top-level driver. Iterates over the four supported models, their recommended layer, and a per-model grid of `T` values, dispatching to the per-task scripts below. Tasks are toggled with env vars: `RUN_TQA`, `RUN_UF`, `RUN_TOXICITY`, `RUN_MMLU`, `RUN_GSM8K`, `RUN_NQ`, `RUN_TRIVIAQA`. |
 | `experiments/experiments_truthfulqa.sh` | TruthfulQA: generates with every baseline + `COBRAS` across `REPEAT` seeds, then evaluates. |
 | `experiments/experiments_ultrafeedback.sh` | UltraFeedback (helpfulness) sweep, same structure as above. |
 | `experiments/experiments_toxicity.sh` | RealToxicityPrompts detoxification sweep. |
 | `experiments/experiments_mmlu.sh` | MMLU OOD sweep. |
 | `experiments/experiments_gsm8k.sh` | GSM8K OOD sweep (uses `accelerate` + merge step). |
+| `experiments/experiments_nq.sh` | Natural Questions OOD sweep. |
+| `experiments/experiments_triviaqa.sh` | TriviaQA OOD sweep. |
 
 Example:
 ```bash
@@ -182,7 +204,7 @@ Example:
 RUN_TQA=1 RUN_UF=1 RUN_TOXICITY=1 uv run bash experiments/runner.sh 3
 
 # OOD capability checks (1 seed)
-RUN_MMLU=1 RUN_GSM8K=1 uv run bash experiments/runner.sh 1
+RUN_MMLU=1 RUN_GSM8K=1 RUN_NQ=1 RUN_TRIVIAQA=1 uv run bash experiments/runner.sh 1
 ```
 
 ## Adding a New Dataset
@@ -258,7 +280,9 @@ cobras/
 │   ├── truthfulqa/         # TruthfulQA generation & evaluation
 │   ├── toxicity/           # Detoxification generation & evaluation
 │   ├── mmlu/               # MMLU OOD generation & evaluation
-│   └── gsm8k/              # GSM8K OOD generation & evaluation
+│   ├── gsm8k/              # GSM8K OOD generation & evaluation
+│   ├── nq/                 # Natural Questions OOD generation & evaluation
+│   └── triviaqa/           # TriviaQA OOD generation & evaluation
 ├── data/                   # Data preparation scripts
 │   ├── ultrafeedback/      # Ultrafeedback data preprocessing
 │   ├── truthfulqa/         # TruthfulQA data processing
@@ -271,7 +295,14 @@ cobras/
 
 ## Acknowledgements
 
-This codebase is largely adapted from the official **ODESteer** implementation. The data pipelines, model wrappers, baseline integrations, and Hydra-based experiment scaffolding all originate from that repository; on top of it, COBRAS adds the Riemannian conditional optimal-bridge steering method and the out-of-distribution evaluation suite (MMLU and GSM8K generation, evaluation, and `experiments/` sweep scripts). Many thanks to the ODESteer authors for releasing their code.
+This codebase is largely adapted from the official **ODESteer** implementation. The data pipelines, model wrappers, baseline integrations, and Hydra-based experiment scaffolding all originate from that repository; on top of it, COBRAS adds the Riemannian conditional optimal-bridge steering method and the out-of-distribution evaluation suite (MMLU, GSM8K, Natural Questions and TriviaQA generation, evaluation, and
+`experiments/` sweep scripts). Many thanks to the ODESteer authors for releasing their code.
 
 - Code: https://github.com/ZhaoHongjue/odesteer
 - Paper: https://arxiv.org/abs/2602.17560
+
+The Natural Questions and TriviaQA transfer evaluation follows **Inference-Time Intervention (ITI)** and uses the
+adversarial-answer splits released by its authors.
+
+- Code: https://github.com/likenneth/honest_llama
+- Paper: https://arxiv.org/abs/2306.03341
