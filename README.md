@@ -15,10 +15,6 @@ Implementation of the paper **"COBRAS: Conditional Optimal Bridge for Riemannian
 1. **Install uv** (if not already installed): please follow instructions in https://docs.astral.sh/uv/getting-started/installation/
 
 2. **Clone the repository**:
-   ```bash
-   git clone https://github.com/arshandalili/cobras.git
-   cd cobras
-   ```
 
 3. **Install dependencies**:
    ```bash
@@ -293,16 +289,3 @@ cobras/
 └── pyproject.toml          # Project dependencies
 ```
 
-## Acknowledgements
-
-This codebase is largely adapted from the official **ODESteer** implementation. The data pipelines, model wrappers, baseline integrations, and Hydra-based experiment scaffolding all originate from that repository; on top of it, COBRAS adds the Riemannian conditional optimal-bridge steering method and the out-of-distribution evaluation suite (MMLU, GSM8K, Natural Questions and TriviaQA generation, evaluation, and
-`experiments/` sweep scripts). Many thanks to the ODESteer authors for releasing their code.
-
-- Code: https://github.com/ZhaoHongjue/odesteer
-- Paper: https://arxiv.org/abs/2602.17560
-
-The Natural Questions and TriviaQA transfer evaluation follows **Inference-Time Intervention (ITI)** and uses the
-adversarial-answer splits released by its authors.
-
-- Code: https://github.com/likenneth/honest_llama
-- Paper: https://arxiv.org/abs/2306.03341
