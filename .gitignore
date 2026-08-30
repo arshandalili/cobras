@@ -31,3 +31,17 @@ activations/
 .DS_Store
 
 .history/
+
+# Cached activation tensors (regenerate with data/*/extract_activations.py and
+# scripts/analysis/extract_query_activations.py) -- ~1 GB, never commit
+*.pt
+query_activations/
+q5_activations/
+
+# Editor / agent state
+.claude.json
+.claude/
+
+# Large local artifacts
+*.tar.gz
+*.pdf
