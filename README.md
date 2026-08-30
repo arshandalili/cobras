@@ -15,6 +15,10 @@ Implementation of the paper **"COBRAS: Conditional Optimal Bridge for Riemannian
 1. **Install uv** (if not already installed): please follow instructions in https://docs.astral.sh/uv/getting-started/installation/
 
 2. **Clone the repository**:
+   ```bash
+   git clone https://github.com/arshandalili/cobras.git
+   cd cobras
+   ```
 
 3. **Install dependencies**:
    ```bash
@@ -278,14 +282,61 @@ cobras/
 │   ├── mmlu/               # MMLU OOD generation & evaluation
 │   ├── gsm8k/              # GSM8K OOD generation & evaluation
 │   ├── nq/                 # Natural Questions OOD generation & evaluation
-│   └── triviaqa/           # TriviaQA OOD generation & evaluation
+│   ├── triviaqa/           # TriviaQA OOD generation & evaluation
+│   ├── multilingual/       # HalluQA & CMMLU (Chinese) generation & evaluation
+│   ├── prepare/            # Query-activation extraction for gate calibration
+│   └── analysis/           # Studies, by topic -- see docs/experiments.md
+│       ├── ood_gate/       #   is the OOD advantage the gate or the steering rule?
+│       ├── attribution/    #   what the formulation exposes about a query
+│       ├── geometry/       #   sensitivity to the spherical assumption
+│       ├── cost/           #   cost at scale, and which approximations hold
+│       ├── ablation/       #   per-component ablation
+│       ├── sensitivity/    #   the never-tuned hyperparameters
+│       └── derivation/     #   is the update the exact Riemannian gradient?
 ├── data/                   # Data preparation scripts
 │   ├── ultrafeedback/      # Ultrafeedback data preprocessing
 │   ├── truthfulqa/         # TruthfulQA data processing
-│   └── toxicity/           # Toxicity data processing
+│   ├── toxicity/           # Toxicity data processing
+│   └── q5_halluqa/         # HalluQA (Chinese) data processing
 ├── experiments/            # End-to-end sweep scripts
 ├── confs/                  # Hydra configuration files
+├── docs/experiments.md     # Which code answers which question
+├── tests/                  # Equivalence and config-loading tests
 ├── results/                # Generated outputs (auto-created)
 └── pyproject.toml          # Project dependencies
 ```
 
+## Acknowledgements
+
+This codebase is largely adapted from the official **ODESteer** implementation. The data pipelines, model wrappers, baseline integrations, and Hydra-based experiment scaffolding all originate from that repository; on top of it, COBRAS adds the Riemannian conditional optimal-bridge steering method and the out-of-distribution evaluation suite (MMLU, GSM8K, Natural Questions and TriviaQA generation, evaluation, and
+`experiments/` sweep scripts). Many thanks to the ODESteer authors for releasing their code.
+
+- Code: https://github.com/ZhaoHongjue/odesteer
+- Paper: https://arxiv.org/abs/2602.17560
+
+The Natural Questions and TriviaQA transfer evaluation follows **Inference-Time Intervention (ITI)** and uses the
+adversarial-answer splits released by its authors.
+
+- Code: https://github.com/likenneth/honest_llama
+- Paper: https://arxiv.org/abs/2306.03341
+
+## Experiments beyond the paper
+
+`docs/experiments.md` maps each follow-up study to its code, configs and runner, and explains
+the `COBRAS` / `AblationCOBRAS` / `EuclideanCOBRAS` split. Two entry points worth knowing:
+
+```bash
+# is the out-of-distribution advantage the abstention gate, or the steering rule?
+CUDA_VISIBLE_DEVICES=6 bash experiments/ood_gate_ablation.sh
+
+# the Chinese (HalluQA / CMMLU) evaluation, end to end
+CUDA_VISIBLE_DEVICES=7 bash experiments/multilingual.sh Qwen2.5-7B-Base 13
+```
+
+The abstention gate can be calibrated on real query activations rather than on the contrastive
+pairs, which is what `abstain_on_queries: true` selects. Generate them first:
+
+```bash
+uv run python scripts/prepare/extract_query_activations.py \
+  --model Llama3.1-8B-Base --layer_idx 13 --tasks truthfulqa
+```
