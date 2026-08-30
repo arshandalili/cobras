@@ -12,6 +12,20 @@ _SAME_POINT_THR = 1e-8
 
 
 class COBRAS(Steer):
+    """Conditional Optimal Bridge for Riemannian Activation Steering.
+
+    This class is the shipped method and nothing else: the entropic transport plan of
+    Eq. (7), the extended potentials of Eqs. (15)-(16), the Riemannian centroid drift of
+    Eq. (19), the unit-length geodesic Euler step, the von Mises-Fisher strength, and the
+    k-NN abstention gate. Every knob that exists only to *disable* one of those parts
+    lives in `AblationCOBRAS` (`_cobras_ablation.py`), which overrides the small hook
+    methods below. Keeping the two apart means the defaults here are the paper's
+    configuration by construction rather than by convention.
+
+    Hook methods a variant may override: `_bandwidth`, `_kernel_weights`, `_potentials`,
+    `_combine_drift`, `_abstain_score`, `_abstain_reference`, `_abstain_gate`, `_step`.
+    """
+
     def __init__(
         self,
         k_bw: int = 5,
@@ -24,6 +38,7 @@ class COBRAS(Steer):
         abstain_percentile: float | None = None,
         abstain_k: int = 32,
         abstain_sharpness: float = 50.0,
+        abstain_on_queries: bool = False,
     ) -> None:
         super().__init__()
         self.k_bw = int(k_bw)
@@ -31,14 +46,21 @@ class COBRAS(Steer):
         self.alpha_sigma = float(alpha_sigma)
         self.epsilon = float(epsilon)
         self.max_iters = int(max_iters)
-        self.vmf_kappa = float(vmf_kappa)
+        # None disables the vMF strength, i.e. every query is steered at full strength
+        self.vmf_kappa = None if vmf_kappa is None else float(vmf_kappa)
         self.vmf_beta = float(vmf_beta)
-        self.abstain_percentile = None if (abstain_percentile==1.0) else float(abstain_percentile)
+        # 1.0 is the historical spelling of "no gate" and is kept for config compatibility
+        self.abstain_percentile = (
+            None if abstain_percentile is None or abstain_percentile == 1.0
+            else float(abstain_percentile)
+        )
         self.abstain_k = int(abstain_k)
         self.abstain_sharpness = float(abstain_sharpness)
+        self.abstain_on_queries = bool(abstain_on_queries)
 
         self.R: float | None = None
         self.rho_ref: float | None = None
+        self.abstain_ref: Tensor | None = None
         self.sigma2: float | None = None
         self.h_pos: Tensor | None = None
         self.h_neg: Tensor | None = None
@@ -52,8 +74,20 @@ class COBRAS(Steer):
     def reset_gate(self) -> None:
         self._gate_cache = None
 
+    # ---------------------------------------------------------------- fitting
+
     @torch.no_grad()
-    def fit(self, pos_X: Tensor, neg_X: Tensor) -> "COBRAS":
+    def fit(self, pos_X: Tensor, neg_X: Tensor, ref_X: Tensor | None = None) -> "COBRAS":
+        """Solve the entropic bridge between the contrastive sets.
+
+        `ref_X` holds in-distribution *query* activations and is used only to calibrate
+        the abstention threshold, and only when `abstain_on_queries` is set. It matters
+        because the contrastive pairs are answer activations while the gate is applied to
+        prompt activations, which sit at a different position in the prompt and so at a
+        systematically different radius; calibrating on one and thresholding the other
+        shifts the whole reference. `scripts/prepare/extract_query_activations.py` writes
+        these tensors.
+        """
         pos = pos_X.detach().to(torch.float32)
         neg = neg_X.detach().to(torch.float32)
         R = torch.cat([pos, neg], 0).norm(dim=-1).mean().item()
@@ -72,14 +106,43 @@ class COBRAS(Steer):
         self.cost = cost
         self.log_psi, self.log_phi = self._sinkhorn(cost, self.n_sinkhorn)
 
-        if self.abstain_percentile is not None:
-            neg_rho = knn_geodesic_dist(self.h_neg, R, k=min(self.abstain_k, self.h_neg.size(0) - 1))
-            self.rho_ref = float(torch.quantile(neg_rho.float(), self.abstain_percentile).item())
-
         diff = self.h_pos.mean(0) - self.h_neg.mean(0)
         self.mu_T = diff / diff.norm().clamp(min=_EPS)
         self._device = pos.device
+
+        if self.abstain_percentile is not None:
+            ref = self._abstain_reference(H_all, ref_X)
+            self.rho_ref = float(torch.quantile(ref.float(), self.abstain_percentile).item())
+            self.abstain_ref = ref.sort().values
+
+        self._post_fit(H_all)
         return self
+
+    def _abstain_reference(self, H_all: Tensor, ref_X: Tensor | None) -> Tensor:
+        """The sample of scores the abstention percentile is read off.
+
+        Calibrating on `self.h_neg` uses the leave-one-out k-NN radius, which excludes the
+        point itself; calibrating on `ref_X` scores real queries and so includes it. The
+        two are deliberately not interchangeable.
+        """
+        if not self.abstain_on_queries:
+            return knn_geodesic_dist(
+                self.h_neg, self.R, k=min(self.abstain_k, self.h_neg.size(0) - 1)
+            )
+        if ref_X is None:
+            raise ValueError(
+                "abstain_on_queries=True requires ref_X, but none was passed. Generate the "
+                "query activations with scripts/prepare/extract_query_activations.py, or set "
+                "abstain_on_queries=False to calibrate on the contrastive negatives instead. "
+                "Falling back silently would change the gate threshold without changing the "
+                "run name."
+            )
+        q_ref = ref_X.detach().to(dtype=self.h_pos.dtype, device=self.h_pos.device)
+        q_ref = q_ref * (self.R / q_ref.norm(dim=-1, keepdim=True).clamp(min=_SAME_POINT_THR))
+        return self._abstain_score(q_ref)
+
+    def _post_fit(self, H_all: Tensor) -> None:
+        """Hook for variants that need extra calibration after the bridge is solved."""
 
     @staticmethod
     def _sinkhorn(cost: Tensor, n_iters: int) -> tuple[Tensor, Tensor]:
@@ -103,16 +166,22 @@ class COBRAS(Steer):
                 setattr(self, name, t.to(device=device, dtype=dtype))
         self._device = device
 
+    # ------------------------------------------------------------ the bridge
+
+    def _bandwidth(self, dist2: Tensor) -> Tensor | float:
+        """Query-adaptive KDE bandwidth of Eq. (18): the squared geodesic distance to the
+        furthest sample, so the weights are scale-free in how far the query has drifted."""
+        return dist2.max(dim=-1, keepdim=True).values.clamp(min=(self.R * 1e-3) ** 2)
+
     def _query_log_psi(self, q: Tensor) -> Tensor:
         """Per-query positive weights via marginalization over h_neg. Returns [B, N_pos]."""
         R = self.R
         cos_qn = (q @ self.h_neg.T) / (R ** 2)
         cos_qn = cos_qn.clamp(-1.0 + _EPS, 1.0 - _EPS)
         dist2_qn = (R * torch.acos(cos_qn)).pow(2)  # [B, N_neg]
-        sigma2_qn = dist2_qn.max(dim=-1, keepdim=True).values.clamp(min=(R * 1e-3) ** 2)
-        log_alpha = self.log_phi.unsqueeze(0) - dist2_qn / (2.0 * sigma2_qn)  # [B, N_neg]
+        log_alpha = self.log_phi.unsqueeze(0) - dist2_qn / (2.0 * self._bandwidth(dist2_qn))
         # log_psi_q[b,i] = logsumexp_j(log_alpha[b,j] - cost[j,i])
-        return torch.logsumexp(log_alpha.unsqueeze(2) - self.cost.unsqueeze(0), dim=1)  # [B, N_pos]
+        return torch.logsumexp(log_alpha.unsqueeze(2) - self.cost.unsqueeze(0), dim=1)
 
     def _query_log_phi(self, q: Tensor) -> Tensor:
         """Per-query negative weights via marginalization over h_pos. Returns [B, N_neg]."""
@@ -120,57 +189,96 @@ class COBRAS(Steer):
         cos_qp = (q @ self.h_pos.T) / (R ** 2)
         cos_qp = cos_qp.clamp(-1.0 + _EPS, 1.0 - _EPS)
         dist2_qp = (R * torch.acos(cos_qp)).pow(2)  # [B, N_pos]
-        sigma2_qp = dist2_qp.max(dim=-1, keepdim=True).values.clamp(min=(R * 1e-3) ** 2)
-        log_beta = self.log_psi.unsqueeze(0) - dist2_qp / (2.0 * sigma2_qp)  # [B, N_pos]
+        log_beta = self.log_psi.unsqueeze(0) - dist2_qp / (2.0 * self._bandwidth(dist2_qp))
         # log_phi_q[b,j] = logsumexp_i(log_beta[b,i] - cost[j,i])
-        return torch.logsumexp(log_beta.unsqueeze(1) - self.cost.unsqueeze(0), dim=2)  # [B, N_neg]
+        return torch.logsumexp(log_beta.unsqueeze(1) - self.cost.unsqueeze(0), dim=2)
 
-    def _weighted_centroid(self, q: Tensor, H: Tensor, log_w: Tensor) -> Tensor:
+    def _potentials(self, q: Tensor) -> tuple[Tensor, Tensor]:
+        """The Eqs. (15)-(16) extension: both potentials re-marginalized at the current
+        iterate, so they follow the query as it moves along the geodesic."""
+        return self._query_log_psi(q), self._query_log_phi(q)
+
+    def _kernel_weights(self, q: Tensor, H: Tensor, log_w: Tensor):
+        """The Eq. (18) weights at `q`, plus the geometry they were built from."""
         R = self.R
         cos_t = (q @ H.T) / (R ** 2)
         cos_t = cos_t.clamp(-1.0 + _EPS, 1.0 - _EPS)
         theta = torch.acos(cos_t)
         dist2 = (R * theta).pow(2)
-        sigma2 = dist2.max(dim=-1, keepdim=True).values.clamp(min=(R * 1e-3) ** 2)
+        sigma2 = self._bandwidth(dist2)
         lw = log_w if log_w.dim() == 2 else log_w.unsqueeze(0)  # [B, N] or [1, N]
         log_wK = lw - dist2 / (2.0 * sigma2)
-        wK = (log_wK - torch.logsumexp(log_wK, dim=-1, keepdim=True)).exp()
+        log_Z = torch.logsumexp(log_wK, dim=-1)  # log of the Schroedinger potential at q
+        wK = (log_wK - log_Z.unsqueeze(-1)).exp()
+        return wK, theta, cos_t, log_Z, sigma2
+
+    def _weighted_centroid(
+        self, q: Tensor, H: Tensor, log_w: Tensor
+    ) -> tuple[Tensor, Tensor, Tensor | float]:
+        wK, theta, cos_t, log_Z, sigma2 = self._kernel_weights(q, H, log_w)
         sin_t = torch.sin(theta).clamp(min=_SAME_POINT_THR)
         coeff = torch.where(theta < _SAME_POINT_THR, torch.zeros_like(theta), theta / sin_t)
         wKc = wK * coeff
         numer = wKc @ H - (wKc * cos_t).sum(-1, keepdim=True) * q
-        return numer / (1.0 + self.alpha_sigma)
+        return numer / (1.0 + self.alpha_sigma), log_Z, sigma2
 
-    def _field(self, q: Tensor) -> Tensor:
-        R = self.R
-        log_psi_q = self._query_log_psi(q)  # [B, N_pos] — adapts to current q
-        log_phi_q = self._query_log_phi(q)   # [B, N_neg] — symmetric, adapts to current q
-        V_pos = self._weighted_centroid(q, self.h_pos, log_psi_q)
-        V_neg = self._weighted_centroid(q, self.h_neg, log_phi_q)
-        V = V_pos - V_neg
-        return V - (V * q).sum(-1, keepdim=True) / (R ** 2) * q
+    def _combine_drift(
+        self, V_pos: Tensor, V_neg: Tensor, s2_pos: Tensor | float, s2_neg: Tensor | float
+    ) -> Tensor:
+        """Eq. (19): the difference of the two Riemannian centroids. The 1/sigma^2 of
+        Eq. (31) is absorbed into the step size, which is what makes the step unit-length."""
+        return V_pos - V_neg
 
-    def _compute_strength(self, p0: Tensor) -> tuple[Tensor | None, Tensor]:
+    def _field(self, q: Tensor) -> tuple[Tensor, Tensor, Tensor]:
+        """Returns (drift, log psi_hat, log phi_hat) at `q`, tangent to the sphere."""
+        log_psi_q, log_phi_q = self._potentials(q)
+        V_pos, log_psi_hat, s2_pos = self._weighted_centroid(q, self.h_pos, log_psi_q)
+        V_neg, log_phi_hat, s2_neg = self._weighted_centroid(q, self.h_neg, log_phi_q)
+        V = self._combine_drift(V_pos, V_neg, s2_pos, s2_neg)
+        V = V - (V * q).sum(-1, keepdim=True) / (self.R ** 2) * q
+        return V, log_psi_hat, log_phi_hat
+
+    # -------------------------------------------------------- strength & gate
+
+    def _compute_strength(self, p0: Tensor) -> tuple[Tensor, Tensor]:
+        if self.vmf_kappa is None:
+            strength = torch.ones(p0.shape[0], device=p0.device, dtype=p0.dtype)
+            return strength, strength > 0
         cos_t = (p0 / self.R) @ self.mu_T
         logits = self.vmf_kappa * torch.stack([cos_t, -cos_t], -1)
         delta = torch.softmax(logits, -1)[:, 1]
         strength = ((delta - self.vmf_beta) / (1.0 - self.vmf_beta)).clamp(0.0, 1.0)
         return strength, strength > 0
 
-    def _abstain_gate(self, q: Tensor) -> Tensor:
+    @torch.no_grad()
+    def _abstain_score(self, q: Tensor, chunk: int = 64) -> Tensor:
+        """How far a query sits from the transport support, as the geodesic radius of its
+        k-th nearest contrastive negative."""
         cos_qn = (q @ self.h_neg.T) / (self.R ** 2)
         cos_qn = cos_qn.clamp(-1.0 + _EPS, 1.0 - _EPS)
         dist_qn = self.R * torch.acos(cos_qn)
         k = min(self.abstain_k, self.h_neg.size(0))
-        rho = dist_qn.topk(k, dim=1, largest=False).values[:, -1]
-        return 1.0 / (1.0 + (rho / self.rho_ref) ** self.abstain_sharpness)
+        return dist_qn.topk(k, dim=1, largest=False).values[:, -1]
+
+    def _abstain_gate(self, q: Tensor) -> Tensor:
+        """Ratio calibration: a soft threshold at `rho_ref` with exponent `sharpness`."""
+        score = self._abstain_score(q)
+        return 1.0 / (1.0 + (score / self.rho_ref) ** self.abstain_sharpness)
+
+    # ------------------------------------------------------------- steering
 
     def vector_field(self, X: Tensor) -> Tensor:
         assert self.h_pos is not None
         self._to(X.device, X.dtype)
         p = X * (self.R / X.norm(dim=-1, keepdim=True).clamp(min=_SAME_POINT_THR))
-        V = self._field(p)
+        V = self._field(p)[0]
         return V / (V.norm(dim=-1, keepdim=True) + _EPS)
+
+    def _step(self, V: Tensor, dt_vec: Tensor, T: float, strength: Tensor) -> Tensor:
+        """Unit-length geodesic Euler step: the drift sets the direction, `dt_vec` the
+        distance, so total arc length is fixed by T regardless of the drift magnitude."""
+        v_norm = V.norm(dim=-1, keepdim=True).clamp(min=_EPS)
+        return dt_vec.unsqueeze(-1) * (V / v_norm)
 
     @torch.no_grad()
     def steer(self, X: Tensor, T: float = 1.0) -> Tensor:
@@ -195,10 +303,10 @@ class COBRAS(Steer):
         for _ in range(self.max_iters):
             if not active.any():
                 break
-            V = self._field(q)
-            v_norm = V.norm(dim=-1, keepdim=True).clamp(min=_EPS)
-            step = dt_vec.unsqueeze(-1) * (V / v_norm)
+            V = self._field(q)[0]
+            step = self._step(V, dt_vec, T, strength)
             if self.epsilon > 0.0:
+                v_norm = V.norm(dim=-1, keepdim=True).clamp(min=_EPS)
                 xi = torch.randn_like(q)
                 q_unit = q / R
                 xi = xi - (xi * q_unit).sum(-1, keepdim=True) * q_unit
@@ -210,3 +318,50 @@ class COBRAS(Steer):
             q = torch.where(active.unsqueeze(-1), q_new, q)
 
         return torch.where(active.unsqueeze(-1), q, p0) * (X_norm / R)
+
+    # ------------------------------------------------------------- analysis
+
+    def _geo_sq(self, q: Tensor, H: Tensor) -> Tensor:
+        cos_t = ((q @ H.T) / (self.R ** 2)).clamp(-1.0 + _EPS, 1.0 - _EPS)
+        return (self.R * torch.acos(cos_t)).pow(2)
+
+    @torch.no_grad()
+    def log_marginal(
+        self, X: Tensor, raw: bool = False, bandwidth_scale: float = 1.0, chunk: int = 128
+    ) -> Tensor:
+        """log p_0 = log phi_hat + log psi_hat in the plain form of Eqs. (10)-(11), i.e. with
+        the Sinkhorn potentials themselves rather than their Eq. (15)-(16) extension.
+
+        The probability-flow drift is the *ratio* of the two potentials, in which their common
+        kernel decay in the distance to the data cancels; that decay survives only in the
+        *product*, which is the bridge's own time marginal (Sec. 4.2). So this score is the one
+        factor of the SB solution the drift never reads, and it is what says whether the query
+        lies where the bridge assigned any transport at all.
+
+        `bandwidth_scale` multiplies sigma^2 here only. The scale matters: at b = sigma^2 the
+        score is an affine function of the *mean* squared geodesic distance to the samples,
+        while as b -> 0 it converges to the *minimum* of that distance.
+        """
+        self._to(X.device, X.dtype)
+        p = X if raw else X * (self.R / X.norm(dim=-1, keepdim=True).clamp(min=_SAME_POINT_THR))
+        b = bandwidth_scale * self.sigma2
+        out = []
+        for i in range(0, p.size(0), chunk):
+            q = p[i : i + chunk]
+            d2p = self._geo_sq(q, self.h_pos)
+            d2n = self._geo_sq(q, self.h_neg)
+            out.append(torch.logsumexp(self.log_phi.unsqueeze(0) - d2n / (2.0 * b), dim=-1)
+                       + torch.logsumexp(self.log_psi.unsqueeze(0) - d2p / (2.0 * b), dim=-1))
+        return torch.cat(out)
+
+    @torch.no_grad()
+    def attribution(self, X: Tensor) -> tuple[Tensor, Tensor]:
+        """The Eq. (18) weights at the query, i.e. the distribution over the contrastive
+        samples whose convex combination is the step of Eq. (19). Returns (w_pos, w_neg),
+        each summing to 1 along the sample axis, evaluated at the initial iterate q_0."""
+        self._to(X.device, X.dtype)
+        q0 = X * (self.R / X.norm(dim=-1, keepdim=True).clamp(min=_SAME_POINT_THR))
+        log_psi_q, log_phi_q = self._potentials(q0)
+        w_pos = self._kernel_weights(q0, self.h_pos, log_psi_q)[0]
+        w_neg = self._kernel_weights(q0, self.h_neg, log_phi_q)[0]
+        return w_pos, w_neg
