@@ -64,9 +64,7 @@ Answer: D"""
 # disables it), so COBRAS is compared to CAA and ITI without any extra gating machinery
 COBRAS_KWARGS = dict(
     k_bw=5, n_sinkhorn=5, alpha_sigma=1e-3, epsilon=0.0, max_iters=10,
-    vmf_kappa=20, vmf_beta=0.0, abstain_percentile=1.0, abstain_k=32,
-    abstain_sharpness=50.0,
-)
+    vmf_kappa=20, vmf_beta=0.0, abstain_percentile=1.0, )
 STEER_KWARGS = {'CAA': {}, 'ITI': {}, 'COBRAS': COBRAS_KWARGS}
 
 # common tuning grid, in units of median relative displacement of the query activation

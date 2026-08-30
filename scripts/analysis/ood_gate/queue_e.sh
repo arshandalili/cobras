@@ -37,26 +37,26 @@ score () { uv run python -u scripts/analysis/ood_gate/eval.py -t "$1" -m Llama3.
 judge () { uv run python -u scripts/analysis/ood_gate/tqa_eval.py -m Llama3.1-8B-Base -l 13 -s "$1" >> "$LOG" 2>&1; }
 
 # ---- stage 1: MMLU, N = 100, all ten rows
-for spec in "OOD-NoSteer 1.0" "OOD-CAA 4" "OOD-CAA-Gate 4" "OOD-ODESteer 4" "OOD-ODESteer-Gate 4" \
-            "OOD-SphericalSteer 4" "OOD-SphericalSteer-Gate 4" "OOD-COBRAS-NoGate 0.65" \
-            "OOD-COBRAS-Gate 0.65" "OOD-COBRAS-GateMarginal 0.65"; do
+for spec in "OOD-NoSteer 1.0" "OOD-CAA 4" "OOD-ODESteer 4" \
+            "OOD-SphericalSteer 4" "OOD-COBRAS-NoGate 0.65" \
+            "OOD-COBRAS-Gate 0.65" "OOD-COBRAS-Gate 0.65"; do
   run mmlu $spec
 done
 score mmlu
 echo "[$(date +%H:%M:%S)] ===== STAGE 1 MMLU DONE =====" >> "$LOG"
 
 # ---- stage 2: GSM8K, N = 100, all ten rows
-for spec in "OOD-NoSteer 1.0" "OOD-COBRAS-Gate 0.65" "OOD-COBRAS-NoGate 0.65" "OOD-COBRAS-GateMarginal 0.65" \
-            "OOD-SphericalSteer 4" "OOD-SphericalSteer-Gate 4" "OOD-CAA 4" "OOD-CAA-Gate 4" \
-            "OOD-ODESteer 4" "OOD-ODESteer-Gate 4"; do
+for spec in "OOD-NoSteer 1.0" "OOD-COBRAS-Gate 0.65" "OOD-COBRAS-NoGate 0.65" "OOD-COBRAS-Gate 0.65" \
+            "OOD-SphericalSteer 4" "OOD-CAA 4" \
+            "OOD-ODESteer 4"; do
   run gsm8k $spec
 done
 score gsm8k
 echo "[$(date +%H:%M:%S)] ===== STAGE 2 GSM8K DONE =====" >> "$LOG"
 
 # ---- stage 3: TruthfulQA, all 817, seed 42
-for spec in "OOD-COBRAS-Gate 0.65" "OOD-COBRAS-NoGate 0.65" "OOD-SphericalSteer-Gate 4" \
-            "OOD-COBRAS-GateMarginal 0.65" "OOD-CAA-Gate 4" "OOD-ODESteer-Gate 4"; do
+for spec in "OOD-COBRAS-Gate 0.65" "OOD-COBRAS-NoGate 0.65" \
+            "OOD-COBRAS-Gate 0.65"; do
   run truthfulqa $spec
 done
 judge 42
@@ -66,19 +66,19 @@ echo "[$(date +%H:%M:%S)] ===== STAGE 3 TQA SEED 42 JUDGED =====" >> "$LOG"
 run gsm8k OOD-COBRAS-Gate      0.65 42 steer.kwargs.abstain_percentile=0.9
 run gsm8k OOD-COBRAS-Gate      0.65 42 steer.kwargs.abstain_percentile=0.95
 run gsm8k OOD-COBRAS-Gate      0.65 42 steer.kwargs.abstain_percentile=0.995
-run gsm8k OOD-COBRAS-GateMarginal  0.65 42 steer.kwargs.abstain_percentile=0.4
-run gsm8k OOD-COBRAS-GateMarginal  0.65 42 steer.kwargs.abstain_percentile=0.7
-run gsm8k OOD-COBRAS-GateMarginal  0.65 42 steer.kwargs.abstain_percentile=0.8
-run gsm8k OOD-COBRAS-GateMarginal  0.65 42 steer.kwargs.abstain_percentile=0.9
-run gsm8k OOD-COBRAS-GateQuantile 0.65 42 steer.kwargs.abstain_percentile=0.534
-run gsm8k OOD-COBRAS-GateQuantile 0.65 42 steer.kwargs.abstain_percentile=0.8
+run gsm8k OOD-COBRAS-Gate  0.65 42 steer.kwargs.abstain_percentile=0.4
+run gsm8k OOD-COBRAS-Gate  0.65 42 steer.kwargs.abstain_percentile=0.7
+run gsm8k OOD-COBRAS-Gate  0.65 42 steer.kwargs.abstain_percentile=0.8
+run gsm8k OOD-COBRAS-Gate  0.65 42 steer.kwargs.abstain_percentile=0.9
+run gsm8k OOD-COBRAS-GateCov90 0.65 42 steer.kwargs.abstain_percentile=0.534
+run gsm8k OOD-COBRAS-GateCov90 0.65 42 steer.kwargs.abstain_percentile=0.8
 score gsm8k
 echo "[$(date +%H:%M:%S)] ===== STAGE 4 GSM8K COVERAGE SWEEP DONE =====" >> "$LOG"
 
 # ---- stage 5: TruthfulQA seeds 43 and 44
 for seed in 43 44; do
-  for spec in "OOD-COBRAS-Gate 0.65" "OOD-COBRAS-NoGate 0.65" "OOD-SphericalSteer-Gate 4" \
-              "OOD-COBRAS-GateMarginal 0.65" "OOD-CAA-Gate 4" "OOD-ODESteer-Gate 4"; do
+  for spec in "OOD-COBRAS-Gate 0.65" "OOD-COBRAS-NoGate 0.65" \
+              "OOD-COBRAS-Gate 0.65"; do
     run truthfulqa $spec $seed
   done
   judge $seed

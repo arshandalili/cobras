@@ -5,7 +5,7 @@ from cobras.utils.data import load_tqa_gen_data, load_query_activations
 from cobras.steer import EuclideanCOBRAS, _sq_dists
 
 KW = dict(k_bw=5, n_sinkhorn=5, alpha_sigma=1.0e-3, epsilon=0.0, max_iters=10,
-          vmf_kappa=20, vmf_beta=0.0, abstain_percentile=1.0, abstain_k=32, abstain_sharpness=50.0)
+          vmf_kappa=20, vmf_beta=0.0, abstain_percentile=1.0)
 pos, neg = load_tqa_gen_data("Llama3.1-8B-Base", 13, 0)
 pos, neg = pos.cuda().float(), neg.cuda().float()
 q = load_query_activations("Llama3.1-8B-Base", 13, "truthfulqa_split1")[:10].cuda().float()

@@ -25,7 +25,7 @@ from cobras.utils.data import load_tqa_gen_data_all_splits, load_query_activatio
 
 MODEL, LAYER = "Llama3.1-8B-Base", 13
 KW = dict(k_bw=5, alpha_sigma=1e-3, epsilon=0.0, max_iters=10, vmf_kappa=20,
-          abstain_percentile=0.98, abstain_k=32, abstain_sharpness=200.0)
+          abstain_percentile=0.534)
 
 
 def cos(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:

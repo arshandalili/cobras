@@ -21,7 +21,7 @@
 # NOT superseded and NOT corrected here. These are population statistics over 1000 prompt
 # activations per task, not N-dependent, and the ANALYSIS stage below recomputes them for
 # provenance only:
-#   sections 3, 4, 5a-5d, 5f  (AUROC, Spearman, gate values, radius quantiles, Table 2 regression)
+#   sections 3, 4, 5a-5d  (AUROC, Spearman, gate values, score quantiles)
 #   section 2a                (intervention magnitudes, from results/analysis/*-intervention.json)
 # The Part 1 TruthfulQA column and section 2c's TruthfulQA columns are ALREADY full size at three
 # seeds, so re-running them here is a reproduction and not a correction. To do only the columns
@@ -32,11 +32,9 @@
 # -------------------------------------------------------------------------------------------------
 # steering configs, all authored for this workstream:
 #   confs/steer/OOD-NoSteer.yaml            confs/steer/OOD-CAA.yaml
-#   confs/steer/OOD-CAA-Gate.yaml           confs/steer/OOD-ODESteer.yaml
-#   confs/steer/OOD-ODESteer-Gate.yaml      confs/steer/OOD-SphericalSteer.yaml
-#   confs/steer/OOD-SphericalSteer-Gate.yaml
+#   confs/steer/OOD-ODESteer.yaml           confs/steer/OOD-SphericalSteer.yaml
 #   confs/steer/OOD-COBRAS-NoGate.yaml      confs/steer/OOD-COBRAS-Gate.yaml
-#   confs/steer/OOD-COBRAS-GateMarginal.yaml    confs/steer/OOD-COBRAS-GateQuantile.yaml
+#   confs/steer/OOD-COBRAS-GateCov90.yaml
 #
 # helpers, all authored for this workstream:
 #   scripts/analysis/ood_gate/mmlu_tf32.py          TF32 wrapper around the unmodified MMLU scorer
@@ -44,15 +42,14 @@
 #   scripts/analysis/ood_gate/tqa_eval.py           TruthfulQA True x Info for q1-* rows only
 #   scripts/analysis/ood_gate/collect.py            assembles the tables
 #   scripts/analysis/ood_gate/implied_marginal.py   sections 3a and 4
-#   scripts/analysis/ood_gate/gate_calibration.py   sections 5a-5d
-#   scripts/analysis/ood_gate/table2_regression.py  sections 5c-ter and 5f
+#   scripts/analysis/ood_gate/gate_calibration.py   sections 5a-5d (gate coverage + AUROC)
 #   scripts/analysis/ood_gate/sb_marginal_gate.py      section 3b   (pre-existing)
 #   scripts/prepare/extract_query_activations.py  fills data/query_activations/ (pre-existing)
 #
 # unmodified repo code these call into:
 #   scripts/gsm8k/gsm8k_generate.py  scripts/gsm8k/gsm8k_eval.py
 #   scripts/mmlu/mmlu_generate.py    scripts/truthfulqa/truthfulqa_generate.py
-#   src/cobras/steer/_cobras.py      src/cobras/steer/_gated_steer.py
+#   src/cobras/steer/_cobras.py
 #
 # data that must exist before the first run:
 #   the contrastive TruthfulQA activations every experiment in this repo fits on, and
@@ -117,31 +114,31 @@ MMLU_SCRIPT="scripts/analysis/ood_gate/mmlu_tf32.py"
 # -------------------------------------------------------------------------------------------------
 # the rows.  "<config> <T> [hydra overrides...]"
 # -------------------------------------------------------------------------------------------------
+# The gate reads the bridge's time marginal, so it exists only for COBRAS: there is no
+# baseline-with-the-same-gate row any more, because the baselines have no bridge to read.
+# What the grid isolates is COBRAS gated vs ungated against the ungated baselines.
 GRID=(
   "OOD-NoSteer 1.0"                                  # unsteered reference, run like every other row
   "OOD-CAA 4"
-  "OOD-CAA-Gate 4"
   "OOD-ODESteer 4"
-  "OOD-ODESteer-Gate 4"
   "OOD-SphericalSteer 4"
-  "OOD-SphericalSteer-Gate 4"
   "OOD-COBRAS-NoGate 0.65"
-  "OOD-COBRAS-Gate 0.65"                             # the shipped Table 1 / Fig. 2 configuration
-  "OOD-COBRAS-GateMarginal 0.65"                         # bridge marginal, matched in-distribution cost
+  "OOD-COBRAS-Gate 0.65"                             # the shipped configuration
 )
 
+# one knob, so the sensitivity row sweeps the nominal in-distribution coverage itself.
+# 0.534 is the shipped value; the mean in-distribution gate is (1 + p) / 2.
 SWEEP=(
+  "OOD-COBRAS-Gate 0.65 steer.kwargs.abstain_percentile=0.2"
+  "OOD-COBRAS-Gate 0.65 steer.kwargs.abstain_percentile=0.3"
+  "OOD-COBRAS-Gate 0.65 steer.kwargs.abstain_percentile=0.4"
+  "OOD-COBRAS-Gate 0.65 steer.kwargs.abstain_percentile=0.7"
+  "OOD-COBRAS-Gate 0.65 steer.kwargs.abstain_percentile=0.8"
   "OOD-COBRAS-Gate 0.65 steer.kwargs.abstain_percentile=0.9"
   "OOD-COBRAS-Gate 0.65 steer.kwargs.abstain_percentile=0.95"
-  "OOD-COBRAS-Gate 0.65 steer.kwargs.abstain_percentile=0.995"
-  "OOD-COBRAS-Gate 0.65 steer.kwargs.abstain_k=128"    # Table 2's K ablation, percentile stays 0.98
-  "OOD-COBRAS-Gate 0.65 steer.kwargs.abstain_k=256"
-  "OOD-COBRAS-GateMarginal 0.65 steer.kwargs.abstain_percentile=0.4"
-  "OOD-COBRAS-GateMarginal 0.65 steer.kwargs.abstain_percentile=0.7"
-  "OOD-COBRAS-GateMarginal 0.65 steer.kwargs.abstain_percentile=0.8"
-  "OOD-COBRAS-GateMarginal 0.65 steer.kwargs.abstain_percentile=0.9"
-  "OOD-COBRAS-GateQuantile 0.65 steer.kwargs.abstain_percentile=0.534"
-  "OOD-COBRAS-GateQuantile 0.65 steer.kwargs.abstain_percentile=0.8"
+  # the abstention bandwidth: where in the marginal family the gate reads
+  "OOD-COBRAS-Gate 0.65 steer.kwargs.abstain_bandwidth_scale=0.015625"
+  "OOD-COBRAS-Gate 0.65 steer.kwargs.abstain_bandwidth_scale=0.0009765625"
 )
 
 ALL=()
@@ -398,7 +395,6 @@ if [ "$ANALYSIS" = "1" ]; then
   say "===== ANALYSIS (population statistics, not N-dependent) ====="
   for a in scripts/analysis/ood_gate/implied_marginal.py \
            scripts/analysis/ood_gate/gate_calibration.py \
-           scripts/analysis/ood_gate/table2_regression.py \
            scripts/analysis/ood_gate/sb_marginal_gate.py; do
     if [ ! -f "$a" ]; then say "skipping missing $a"; continue; fi
     say "ANALYSIS $a"

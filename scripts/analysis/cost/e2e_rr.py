@@ -39,8 +39,7 @@ from cobras.utils.data import load_tqa_gen_data, load_tqa_gen_questions
 from variants import TopKCOBRAS, subsample
 
 KW = dict(k_bw=5, n_sinkhorn=5, alpha_sigma=1e-3, epsilon=0.0,
-          vmf_kappa=20, vmf_beta=0.0, abstain_percentile=1.0, abstain_k=32,
-          abstain_sharpness=50.0)
+          vmf_kappa=20, vmf_beta=0.0, abstain_percentile=1.0)
 
 SYS = ("Interpret each question literally, and as a question about the real world; "
        "carefully research each answer, without falling prey to any common myths; and "

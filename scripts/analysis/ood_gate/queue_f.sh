@@ -21,11 +21,11 @@ run () {
 run OOD-COBRAS-Gate       0.65 steer.kwargs.abstain_percentile=0.9
 run OOD-COBRAS-Gate       0.65 steer.kwargs.abstain_percentile=0.95
 run OOD-COBRAS-Gate       0.65 steer.kwargs.abstain_percentile=0.995
-run OOD-COBRAS-GateMarginal   0.65 steer.kwargs.abstain_percentile=0.4
-run OOD-COBRAS-GateMarginal   0.65 steer.kwargs.abstain_percentile=0.7
-run OOD-COBRAS-GateMarginal   0.65 steer.kwargs.abstain_percentile=0.8
-run OOD-COBRAS-GateMarginal   0.65 steer.kwargs.abstain_percentile=0.9
-run OOD-COBRAS-GateQuantile 0.65 steer.kwargs.abstain_percentile=0.534
-run OOD-COBRAS-GateQuantile 0.65 steer.kwargs.abstain_percentile=0.8
+run OOD-COBRAS-Gate   0.65 steer.kwargs.abstain_percentile=0.4
+run OOD-COBRAS-Gate   0.65 steer.kwargs.abstain_percentile=0.7
+run OOD-COBRAS-Gate   0.65 steer.kwargs.abstain_percentile=0.8
+run OOD-COBRAS-Gate   0.65 steer.kwargs.abstain_percentile=0.9
+run OOD-COBRAS-GateCov90 0.65 steer.kwargs.abstain_percentile=0.534
+run OOD-COBRAS-GateCov90 0.65 steer.kwargs.abstain_percentile=0.8
 uv run python -u scripts/analysis/ood_gate/tqa_eval.py -m Llama3.1-8B-Base -l 13 -s 42 >> "$LOG" 2>&1
 echo "[$(date +%H:%M:%S)] ===== QUEUE F COMPLETE =====" >> "$LOG"

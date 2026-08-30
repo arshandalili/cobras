@@ -14,8 +14,6 @@ kwargs:
   vmf_kappa: null
   vmf_beta: 0.0
   abstain_percentile: 1.0
-  abstain_k: 32
-  abstain_sharpness: 200.0
   potentials: plain
   bandwidth: fixed
   step_mode: raw

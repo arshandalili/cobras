@@ -8,11 +8,8 @@ kwargs:
   vmf_kappa: 20
   vmf_beta: 0.0
   abstain_percentile: 0.9
-  abstain_k: 32
-  abstain_sharpness: 50.0
   abstain_signal: density
-  abstain_calibration: quantile
   abstain_on_queries: true
 T: 0.5
 
-name: COBRAS-sbgate${steer.kwargs.abstain_signal}-${steer.kwargs.abstain_calibration}-p${steer.kwargs.abstain_percentile}-vmf${steer.kwargs.vmf_kappa}-T${steer.T}
+name: COBRAS-sbgate${steer.kwargs.abstain_signal}-cov${steer.kwargs.abstain_percentile}-vmf${steer.kwargs.vmf_kappa}-T${steer.T}

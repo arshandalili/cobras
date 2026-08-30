@@ -22,13 +22,9 @@ from ._cobras import COBRAS
 from ._cobras_ablation import AblationCOBRAS
 from ._euclidean_cobras import EuclideanCOBRAS
 
-# Wraps any steering method in COBRAS's abstention gate, so the gate's contribution
-# can be separated from the steering rule's
-from ._gated_steer import GatedSteer
-
 
 __all__ = [
-    'Steer', 'VecSteer', 'GatedSteer',
+    'Steer', 'VecSteer',
     # Baselines
     'RepE', 'CAA', 'ITI', 'MiMiC', 'LinAcT', 'SphericalSteer',
     # ODESteer

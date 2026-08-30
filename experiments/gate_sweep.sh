@@ -2,7 +2,10 @@
 set -euo pipefail
 
 # Separates the contribution of the abstention gate from that of the steering rule:
-# every COBRAS gate/step variant, and every baseline with the identical kNN gate.
+# every COBRAS gate/step variant, against the ungated baselines. The gate signal itself is
+# swept here too -- the time marginal (shipped) against the extended-potential density and
+# the drift norm, which is the control that should fail because the drift is the ratio in
+# which the distance to the data cancels.
 #
 # Usage:
 #   uv run bash experiments/gate_sweep.sh <TASK> <MODEL> [LAYER_IDX] [T] [SEED]
@@ -22,8 +25,10 @@ MMLU_N="${MMLU_N:-3000}"
 QA_N="${QA_N:-1000}"
 NUM_PROCESSES="${NUM_PROCESSES:-1}"
 
-# baselines are swept at the model-specific T, COBRAS variants at COBRAS_T
-BASELINE_STEERS=(NoSteer CAA GateSweep-CAA-Gate ODESteer GateSweep-ODESteer-Gate SphericalSteer GateSweep-SphericalSteer-Gate)
+# baselines are swept at the model-specific T, COBRAS variants at COBRAS_T.
+# The baselines run ungated: the gate reads the bridge's time marginal, which a method
+# without a bridge does not have.
+BASELINE_STEERS=(NoSteer CAA ODESteer SphericalSteer)
 COBRAS_STEERS=(
   COBRAS GateSweep-COBRAS-Gate GateSweep-COBRAS-Raw GateSweep-COBRAS-NoVMF GateSweep-COBRAS-RawNoVMF
   GateSweep-COBRAS-SBGate-density GateSweep-COBRAS-SBGate-drift

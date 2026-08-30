@@ -10,9 +10,7 @@ kwargs:
   max_iters: 10
   vmf_kappa: 20
   vmf_beta: 0.0
-  abstain_percentile: 0.98
-  abstain_k: 32
-  abstain_sharpness: 200.0
+  abstain_percentile: 0.534
   step_mode: raw
   drift: gradient
 T: 0.65

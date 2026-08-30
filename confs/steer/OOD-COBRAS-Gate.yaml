@@ -1,6 +1,11 @@
-# The shipped (Table 1 / Fig. 2) COBRAS configuration: k-NN abstention radius at k = 32,
-# ratio calibration at percentile 0.98, sharpness 200, threshold read off the contrastive
-# negatives.  abstain_percentile is swept on the CLI for the Q2 sensitivity table.
+# The shipped COBRAS configuration. Abstention reads the bridge's own time marginal
+# p_0 = psi_hat * phi_hat in the plain Eqs. (10)-(11) form at bandwidth sigma^2/256, and the
+# score is calibrated as a quantile over held-out in-distribution *prompt* activations, so
+# abstain_percentile is a nominal in-distribution coverage and is the gate's only knob.
+#
+# 0.534 is not fitted: under quantile calibration the mean in-distribution gate is exactly
+# (1 + p) / 2, so p = 0.534 gives 0.767 -- the same in-distribution steering budget the
+# retired k-NN gate realized at percentile 0.98 / sharpness 200. Swept on the CLI.
 type: COBRAS
 kwargs:
   k_bw: 5
@@ -10,10 +15,8 @@ kwargs:
   max_iters: 10
   vmf_kappa: 20
   vmf_beta: 0.0
-  abstain_percentile: 0.98
-  abstain_k: 32
-  abstain_sharpness: 200.0
-  abstain_on_queries: false
+  abstain_percentile: 0.534
+  abstain_on_queries: true
 T: 0.65
 suffix: ""
-name: q1-cobras-knn-ratio-p${steer.kwargs.abstain_percentile}-k${steer.kwargs.abstain_k}-sh${steer.kwargs.abstain_sharpness}-T${steer.T}${steer.suffix}
+name: cobras-marginal-cov${steer.kwargs.abstain_percentile}-T${steer.T}${steer.suffix}

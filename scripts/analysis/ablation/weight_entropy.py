@@ -24,7 +24,7 @@ from cobras.utils.data import load_tqa_gen_data_all_splits, load_query_activatio
 MODEL, LAYER = "Llama3.1-8B-Base", 13
 N_Q, CHUNK = 128, 8
 BASE = dict(k_bw=5, n_sinkhorn=5, alpha_sigma=1e-3, epsilon=0.0, max_iters=10,
-            vmf_kappa=20, abstain_percentile=0.98, abstain_k=32, abstain_sharpness=200.0)
+            vmf_kappa=20, abstain_percentile=0.534)
 
 
 def stats(w: torch.Tensor) -> dict:

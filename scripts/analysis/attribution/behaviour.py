@@ -66,7 +66,7 @@ def query_signals(model: str, layer_idx: int, device: str) -> dict[str, np.ndarr
             drift_norm=m._field(q0)[0].norm(dim=-1),
             log_bridge_marginal=st["log_product_fixed"],
             log_potential_ratio=st["log_ratio_fixed"],
-            knn_radius=st["knn_radius"],
+            abstain_score=st["abstain_score"],
         )
         for k, v in cur.items():
             sig.setdefault(k, []).append(v.cpu().numpy())

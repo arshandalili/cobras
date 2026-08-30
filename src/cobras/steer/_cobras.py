@@ -17,7 +17,7 @@ class COBRAS(Steer):
     This class is the shipped method and nothing else: the entropic transport plan of
     Eq. (7), the extended potentials of Eqs. (15)-(16), the Riemannian centroid drift of
     Eq. (19), the unit-length geodesic Euler step, the von Mises-Fisher strength, and the
-    k-NN abstention gate. Every knob that exists only to *disable* one of those parts
+    time-marginal abstention gate. Every knob that exists only to *disable* one of those parts
     lives in `AblationCOBRAS` (`_cobras_ablation.py`), which overrides the small hook
     methods below. Keeping the two apart means the defaults here are the paper's
     configuration by construction rather than by convention.
@@ -36,8 +36,7 @@ class COBRAS(Steer):
         vmf_kappa: float | None = None,
         vmf_beta: float = 0.0,
         abstain_percentile: float | None = None,
-        abstain_k: int = 32,
-        abstain_sharpness: float = 50.0,
+        abstain_bandwidth_scale: float = 1.0 / 256.0,
         abstain_on_queries: bool = False,
     ) -> None:
         super().__init__()
@@ -49,17 +48,16 @@ class COBRAS(Steer):
         # None disables the vMF strength, i.e. every query is steered at full strength
         self.vmf_kappa = None if vmf_kappa is None else float(vmf_kappa)
         self.vmf_beta = float(vmf_beta)
-        # 1.0 is the historical spelling of "no gate" and is kept for config compatibility
+        # nominal in-distribution coverage. 1.0 means "open everywhere", i.e. no gate, which
+        # is also the historical spelling and is kept so existing configs keep working
         self.abstain_percentile = (
             None if abstain_percentile is None or abstain_percentile == 1.0
             else float(abstain_percentile)
         )
-        self.abstain_k = int(abstain_k)
-        self.abstain_sharpness = float(abstain_sharpness)
+        self.abstain_bandwidth_scale = float(abstain_bandwidth_scale)
         self.abstain_on_queries = bool(abstain_on_queries)
 
         self.R: float | None = None
-        self.rho_ref: float | None = None
         self.abstain_ref: Tensor | None = None
         self.sigma2: float | None = None
         self.h_pos: Tensor | None = None
@@ -111,24 +109,20 @@ class COBRAS(Steer):
         self._device = pos.device
 
         if self.abstain_percentile is not None:
-            ref = self._abstain_reference(H_all, ref_X)
-            self.rho_ref = float(torch.quantile(ref.float(), self.abstain_percentile).item())
-            self.abstain_ref = ref.sort().values
+            self.abstain_ref = self._abstain_reference(H_all, ref_X).sort().values
 
         self._post_fit(H_all)
         return self
 
     def _abstain_reference(self, H_all: Tensor, ref_X: Tensor | None) -> Tensor:
-        """The sample of scores the abstention percentile is read off.
+        """The sample of scores the coverage quantile is read off.
 
-        Calibrating on `self.h_neg` uses the leave-one-out k-NN radius, which excludes the
-        point itself; calibrating on `ref_X` scores real queries and so includes it. The
-        two are deliberately not interchangeable.
+        Scoring the fitted set measures the marginal where the bridge put its own mass, which
+        is systematically denser than a held-out query sits; scoring `ref_X` measures it where
+        the gate is actually applied. The two are deliberately not interchangeable.
         """
         if not self.abstain_on_queries:
-            return knn_geodesic_dist(
-                self.h_neg, self.R, k=min(self.abstain_k, self.h_neg.size(0) - 1)
-            )
+            return self._abstain_score(H_all)
         if ref_X is None:
             raise ValueError(
                 "abstain_on_queries=True requires ref_X, but none was passed. Generate the "
@@ -251,19 +245,39 @@ class COBRAS(Steer):
         return strength, strength > 0
 
     @torch.no_grad()
-    def _abstain_score(self, q: Tensor, chunk: int = 64) -> Tensor:
-        """How far a query sits from the transport support, as the geodesic radius of its
-        k-th nearest contrastive negative."""
-        cos_qn = (q @ self.h_neg.T) / (self.R ** 2)
-        cos_qn = cos_qn.clamp(-1.0 + _EPS, 1.0 - _EPS)
-        dist_qn = self.R * torch.acos(cos_qn)
-        k = min(self.abstain_k, self.h_neg.size(0))
-        return dist_qn.topk(k, dim=1, largest=False).values[:, -1]
+    def _abstain_score(self, q: Tensor, chunk: int = 128) -> Tensor:
+        """How far a query sits from the transport support, read off the bridge itself.
+
+        The probability-flow drift of Eq. (13) is the *ratio* of the two Schroedinger
+        potentials, in which their common kernel decay in the distance to the data cancels
+        exactly. The decay survives only in the *product*, which is the bridge's own time
+        marginal p_0 = psi_hat * phi_hat (Sec. 4.2) -- the one factor of the SB solution the
+        drift never reads, and so the only one that can say whether the bridge assigned this
+        query any transport at all.
+
+        The score is -log p_0 at bandwidth b = `abstain_bandwidth_scale` * sigma^2; larger
+        means further out. The bandwidth picks a point in a one-parameter family the bridge
+        already defines: -2b log phi_hat_b is the *mean* squared geodesic distance to the
+        negatives at b = sigma^2, and converges to the *minimum* of that distance as b -> 0.
+        The shipped default sits near the small-bandwidth end.
+        """
+        return -self.log_marginal(
+            q, raw=True, bandwidth_scale=self.abstain_bandwidth_scale, chunk=chunk
+        )
 
     def _abstain_gate(self, q: Tensor) -> Tensor:
-        """Ratio calibration: a soft threshold at `rho_ref` with exponent `sharpness`."""
+        """Quantile calibration, and the gate's only knob.
+
+        The score is mapped through its own empirical CDF under the reference sample, so
+        `abstain_percentile` is a nominal in-distribution coverage rather than a threshold on
+        a raw quantity: the gate is fully open for the most in-distribution fraction p of the
+        reference and ramps linearly to zero over the rest. Under that reference the mean gate
+        is exactly (1 + p) / 2, which is what makes p comparable across models and layers.
+        """
         score = self._abstain_score(q)
-        return 1.0 / (1.0 + (score / self.rho_ref) ** self.abstain_sharpness)
+        ref = self.abstain_ref.to(device=score.device, dtype=score.dtype)
+        rank = torch.searchsorted(ref, score.contiguous()) / ref.numel()
+        return ((1.0 - rank) / (1.0 - self.abstain_percentile)).clamp(0.0, 1.0)
 
     # ------------------------------------------------------------- steering
 
@@ -290,7 +304,7 @@ class COBRAS(Steer):
         p0 = X * (R / X_norm)
 
         strength, active = self._compute_strength(p0)
-        if self.abstain_percentile is not None and self.rho_ref is not None:
+        if self.abstain_percentile is not None and self.abstain_ref is not None:
             if self._gate_cache is None:
                 self._gate_cache = self._abstain_gate(p0)
             strength = strength * self._gate_cache

@@ -11,8 +11,6 @@ kwargs:
   vmf_kappa: 20
   vmf_beta: 0.0
   abstain_percentile: 1.0
-  abstain_k: 32
-  abstain_sharpness: 200.0
 T: 0.65
 
 name: q4-noabstain

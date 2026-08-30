@@ -10,8 +10,6 @@ kwargs:
   vmf_kappa: 20
   vmf_beta: 0.0
   abstain_percentile: 1.0
-  abstain_k: 32
-  abstain_sharpness: 200.0
 T: 0.65
 suffix: ""
 name: q1-cobras-nogate-vmf${steer.kwargs.vmf_kappa}-T${steer.T}${steer.suffix}

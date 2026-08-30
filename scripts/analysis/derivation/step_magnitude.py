@@ -22,8 +22,7 @@ from cobras.utils.data import load_tqa_gen_data_all_splits
 
 _EPS = 1e-7
 
-_BASE = dict(k_bw=5, n_sinkhorn=5, alpha_sigma=1e-3, epsilon=0.0, max_iters=10,
-             abstain_k=32, abstain_sharpness=200.0)
+_BASE = dict(k_bw=5, n_sinkhorn=5, alpha_sigma=1e-3, epsilon=0.0, max_iters=10)
 
 RUNGS = {
     "1 strict Eq.13 (plain, fixed, raw, no gates)":
@@ -37,10 +36,10 @@ RUNGS = {
              vmf_kappa=20, abstain_percentile=1.0),
     "4 + abstention gate (exact-gradient COBRAS)":
         dict(potentials="plain", bandwidth="fixed", step_mode="unit", drift="gradient",
-             vmf_kappa=20, abstain_percentile=0.98),
+             vmf_kappa=20, abstain_percentile=0.534),
     "5 shipped COBRAS (extended, adaptive)":
         dict(potentials="extended", bandwidth="adaptive", step_mode="unit", drift="centroid",
-             vmf_kappa=20, abstain_percentile=0.98),
+             vmf_kappa=20, abstain_percentile=0.534),
 }
 
 

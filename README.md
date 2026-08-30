@@ -333,8 +333,10 @@ CUDA_VISIBLE_DEVICES=6 bash experiments/ood_gate_ablation.sh
 CUDA_VISIBLE_DEVICES=7 bash experiments/multilingual.sh Qwen2.5-7B-Base 13
 ```
 
-The abstention gate can be calibrated on real query activations rather than on the contrastive
-pairs, which is what `abstain_on_queries: true` selects. Generate them first:
+COBRAS abstains on the bridge's own time marginal `p_0 = psi_hat * phi_hat` -- the one factor of
+the Schrodinger solution the steering drift never reads. Its single knob, `abstain_percentile`,
+is a nominal in-distribution coverage. Calibrating it on real query activations rather than on
+the contrastive pairs is what `abstain_on_queries: true` selects; generate them first:
 
 ```bash
 uv run python scripts/prepare/extract_query_activations.py \

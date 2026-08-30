@@ -25,7 +25,7 @@ _BASE = dict(k_bw=5, n_sinkhorn=5, alpha_sigma=1e-3, epsilon=0.0, max_iters=10, 
 
 _VARIANTS = {
     "no gate, unit step (Table 1 config)": dict(vmf_kappa=20, abstain_percentile=1.0),
-    "+ kNN gate p98 (Fig. 2 config)": dict(vmf_kappa=20, abstain_percentile=0.98),
+    "+ kNN gate p98 (Fig. 2 config)": dict(vmf_kappa=20, abstain_percentile=0.534),
     "no gate, raw step, centroid drift": dict(
         vmf_kappa=20, abstain_percentile=1.0, step_mode="raw", drift="centroid"),
     "no gate, raw step, sigma restored": dict(
@@ -34,10 +34,10 @@ _VARIANTS = {
         vmf_kappa=None, abstain_percentile=1.0, step_mode="raw", drift="gradient"),
     "+ SB density gate (p0 = psi*phi)": dict(
         vmf_kappa=20, abstain_percentile=0.9, abstain_signal="density",
-        abstain_calibration="quantile", abstain_on_queries=True),
+        abstain_on_queries=True),
     "+ SB drift gate": dict(
         vmf_kappa=20, abstain_percentile=0.9, abstain_signal="drift",
-        abstain_calibration="quantile", abstain_on_queries=True),
+        abstain_on_queries=True),
 }
 
 
@@ -49,7 +49,7 @@ def _sweep_variants() -> dict[str, dict]:
         out[f"kNN gate, ratio, p={p}"] = dict(vmf_kappa=20, abstain_percentile=p)
         out[f"SB density gate, quantile, p={p}"] = dict(
             vmf_kappa=20, abstain_percentile=p, abstain_signal="density",
-            abstain_calibration="quantile", abstain_on_queries=True)
+            abstain_on_queries=True)
     return out
 
 

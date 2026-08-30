@@ -20,11 +20,8 @@ Grouped by what they ablate:
                    selection the Eq. (18) weights make among the contrastive samples
   uniform_weights  replaces those weights with 1/N, keeping the geometry but dropping the
                    selection, so the step is a plain difference of Riemannian centroids
-  abstain_signal   what the gate measures: k-NN radius (shipped), the bridge's own marginal,
-                   the kernel density, or the inverse drift norm
-  abstain_calibration  "quantile" maps the score through the fitted empirical CDF instead of
-                   the shipped soft ratio threshold
-  abstain_bandwidth_scale  multiplies sigma^2 inside `log_marginal` only
+  abstain_signal   which bridge quantity the gate reads: the time marginal p_0 (shipped),
+                   the kernel density of the extended potentials, or the inverse drift norm
 """
 
 from __future__ import annotations
@@ -35,7 +32,6 @@ import torch
 from torch import Tensor
 
 from ._cobras import COBRAS, _EPS, _SAME_POINT_THR
-from ..utils.sphere import knn_geodesic_dist
 
 
 class AblationCOBRAS(COBRAS):
@@ -49,12 +45,9 @@ class AblationCOBRAS(COBRAS):
         vmf_kappa: float | None = None,
         vmf_beta: float = 0.0,
         abstain_percentile: float | None = None,
-        abstain_k: int = 32,
-        abstain_sharpness: float = 50.0,
+        abstain_bandwidth_scale: float = 1.0 / 256.0,
         abstain_on_queries: bool = False,
-        abstain_signal: Literal["knn", "marginal", "density", "drift"] = "knn",
-        abstain_calibration: Literal["ratio", "quantile"] = "ratio",
-        abstain_bandwidth_scale: float = 1.0,
+        abstain_signal: Literal["marginal", "density", "drift"] = "marginal",
         step_mode: Literal["unit", "raw"] = "unit",
         bandwidth: Literal["adaptive", "fixed"] = "adaptive",
         bandwidth_scale: float = 1.0,
@@ -65,12 +58,11 @@ class AblationCOBRAS(COBRAS):
         super().__init__(
             k_bw=k_bw, n_sinkhorn=n_sinkhorn, alpha_sigma=alpha_sigma, epsilon=epsilon,
             max_iters=max_iters, vmf_kappa=vmf_kappa, vmf_beta=vmf_beta,
-            abstain_percentile=abstain_percentile, abstain_k=abstain_k,
-            abstain_sharpness=abstain_sharpness, abstain_on_queries=abstain_on_queries,
+            abstain_percentile=abstain_percentile,
+            abstain_bandwidth_scale=abstain_bandwidth_scale,
+            abstain_on_queries=abstain_on_queries,
         )
         self.abstain_signal = abstain_signal
-        self.abstain_calibration = abstain_calibration
-        self.abstain_bandwidth_scale = float(abstain_bandwidth_scale)
         self.step_mode = step_mode
         self.bandwidth = bandwidth
         self.bandwidth_scale = float(bandwidth_scale)
@@ -81,16 +73,6 @@ class AblationCOBRAS(COBRAS):
         self.step_scale: float | None = None
 
     # ---------------------------------------------------------------- fitting
-
-    def _abstain_reference(self, H_all: Tensor, ref_X: Tensor | None) -> Tensor:
-        if self.abstain_on_queries:
-            return super()._abstain_reference(H_all, ref_X)
-        if self.abstain_signal == "knn":
-            return knn_geodesic_dist(
-                self.h_neg, self.R, k=min(self.abstain_k, self.h_neg.size(0) - 1)
-            )
-        # a non-k-NN signal has no leave-one-out form, so it is scored on the fitted set
-        return self._abstain_score(H_all)
 
     def _post_fit(self, H_all: Tensor) -> None:
         if self.step_mode == "raw":
@@ -143,19 +125,15 @@ class AblationCOBRAS(COBRAS):
 
     @torch.no_grad()
     def _abstain_score(self, q: Tensor, chunk: int = 64) -> Tensor:
-        """Distance-like score for how far a query sits from the transport support.
+        """Alternative bridge quantities the gate could read instead of the time marginal.
 
-        The drift of Eq. (13) is a ratio of the two potentials, so their kernel decay in the
-        distance to the data cancels. It survives only in the product, which is the bridge's
-        own marginal p_0 = psi_hat * phi_hat (Sec. 4.2).
+        `density` scores the product of the *extended* potentials of Eqs. (15)-(16) rather
+        than the plain ones the marginal uses; `drift` scores the reciprocal drift norm, i.e.
+        the ratio the steering step itself reads -- which is exactly the factor in which the
+        kernel decay cancels, and so is the control that should *fail*.
         """
-        if self.abstain_signal == "knn":
-            return super()._abstain_score(q, chunk=chunk)
-
         if self.abstain_signal == "marginal":
-            return -self.log_marginal(
-                q, raw=True, bandwidth_scale=self.abstain_bandwidth_scale
-            )
+            return super()._abstain_score(q, chunk=chunk)
 
         bandwidth, drift = self.bandwidth, self.drift
         if self.abstain_signal == "density":
@@ -178,14 +156,6 @@ class AblationCOBRAS(COBRAS):
         finally:
             self.bandwidth, self.drift = bandwidth, drift
         return torch.cat(out)
-
-    def _abstain_gate(self, q: Tensor) -> Tensor:
-        if self.abstain_calibration != "quantile":
-            return super()._abstain_gate(q)
-        score = self._abstain_score(q)
-        ref = self.abstain_ref.to(device=score.device, dtype=score.dtype)
-        rank = torch.searchsorted(ref, score.contiguous()) / ref.numel()
-        return ((1.0 - rank) / (1.0 - self.abstain_percentile)).clamp(0.0, 1.0)
 
     # ------------------------------------------------------------- steering
 
@@ -230,10 +200,6 @@ class AblationCOBRAS(COBRAS):
         finally:
             self.bandwidth, self.drift = bandwidth, drift
 
-        cos_qn = ((p0 @ self.h_neg.T) / (R ** 2)).clamp(-1.0 + _EPS, 1.0 - _EPS)
-        dist_qn = R * torch.acos(cos_qn)
-        k = min(self.abstain_k, self.h_neg.size(0))
-        stats["knn_radius"] = dist_qn.topk(k, dim=1, largest=False).values[:, -1]
-        stats["nn_dist"] = dist_qn.min(dim=1).values
+        stats["abstain_score"] = self._abstain_score(p0)
         stats["vmf_strength"] = self._compute_strength(p0)[0]
         return stats

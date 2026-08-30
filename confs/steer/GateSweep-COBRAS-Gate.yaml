@@ -7,9 +7,7 @@ kwargs:
   max_iters: 10
   vmf_kappa: 20
   vmf_beta: 0.0
-  abstain_percentile: 0.98
-  abstain_k: 32
-  abstain_sharpness: 50.0
+  abstain_percentile: 0.534
 T: 0.5
 
-name: COBRAS-gate${steer.kwargs.abstain_percentile}-k${steer.kwargs.abstain_k}-sh${steer.kwargs.abstain_sharpness}-vmf${steer.kwargs.vmf_kappa}-${steer.kwargs.step_mode}-T${steer.T}
+name: COBRAS-gatecov${steer.kwargs.abstain_percentile}-vmf${steer.kwargs.vmf_kappa}-unit-T${steer.T}

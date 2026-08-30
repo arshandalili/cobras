@@ -42,8 +42,7 @@ TQA_SYSTEM_PROMPT = (
 # disabled, so only the vMF strength gate is active and it is identical in both variants.
 COBRAS_KWARGS = dict(
     k_bw=5, n_sinkhorn=5, alpha_sigma=1.0e-3, epsilon=0.0, max_iters=10,
-    vmf_kappa=20, vmf_beta=0.0, abstain_percentile=1.0, abstain_k=32, abstain_sharpness=50.0,
-)
+    vmf_kappa=20, vmf_beta=0.0, abstain_percentile=1.0, )
 T_STEER = 0.5
 
 OUT_DIR = get_project_dir() / "results" / "analysis" / "q3_layer_sweep"

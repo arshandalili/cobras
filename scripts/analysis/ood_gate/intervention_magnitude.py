@@ -36,13 +36,14 @@ _STEER_KWARGS = {
 }
 
 # the reported label stays "COBRAS"; the class is AblationCOBRAS because this script reads
-# query_stats and sweeps abstain_signal / abstain_calibration, which only it exposes
+# query_stats and sweeps abstain_signal, which only it exposes
 _STEER_CLS = {"COBRAS": "AblationCOBRAS"}
 
 _GATES = {
-    "knn-ratio(p98,paper)": dict(abstain_percentile=0.98, abstain_signal="knn", abstain_calibration="ratio"),
-    "knn-quantile(p90)": dict(abstain_percentile=0.90, abstain_signal="knn", abstain_calibration="quantile"),
-    "drift-quantile(p90)": dict(abstain_percentile=0.90, abstain_signal="drift", abstain_calibration="quantile"),
+    "marginal(cov0.534,shipped)": dict(abstain_percentile=0.534, abstain_signal="marginal"),
+    "marginal(cov0.90)": dict(abstain_percentile=0.90, abstain_signal="marginal"),
+    "density-quantile(p90)": dict(abstain_percentile=0.90, abstain_signal="density"),
+    "drift-quantile(p90)": dict(abstain_percentile=0.90, abstain_signal="drift"),
 }
 
 _MODEL_T = {
@@ -129,12 +130,14 @@ if __name__ == "__main__":
             for key in stats[ID_TASK]:
                 signal = {t: s[key].cpu().numpy() for t, s in stats.items()}
                 # a query is "in distribution" when density/drift is high, radius low
-                higher_is_id = not key.endswith("radius") and key != "nn_dist"
+                # the abstention score is a distance: larger means further out of distribution
+                higher_is_id = key != "abstain_score"
                 results["cobras_signals"][key] = summarize(signal, higher_is_id)
 
-            rho = np.concatenate([s["knn_radius"].cpu().numpy() for s in stats.values()])
+            # the gate's own score against the extended-potential density it is not built from
+            rho = np.concatenate([s["abstain_score"].cpu().numpy() for s in stats.values()])
             log_p = np.concatenate([s["log_product_fixed"].cpu().numpy() for s in stats.values()])
-            results["knn_vs_density_spearman"] = float(spearmanr(rho, -log_p).statistic)
+            results["score_vs_density_spearman"] = float(spearmanr(rho, -log_p).statistic)
 
             # how much steering each abstention rule leaves in place, per task
             results["gate_value"] = {}

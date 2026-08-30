@@ -2,8 +2,7 @@
 that were never tuned.
 
 One parameter at a time from the shipped Table 1 / Fig. 2 configuration
-(T = 0.65, abstain_percentile = 0.98, abstain_k = 32, abstain_sharpness = 200,
-vmf_kappa = 20, max_iters = 10, k_bw = 5, n_sinkhorn = 5, alpha_sigma = 1e-3),
+(T = 0.65, abstain_percentile = 0.98, vmf_kappa = 20, max_iters = 10, k_bw = 5, n_sinkhorn = 5, alpha_sigma = 1e-3),
 on Llama3.1-8B-Base layer 13, full TruthfulQA 2-fold CV (817 questions).
 
 The base model is loaded once and only the steer model is refit per variant, so the
@@ -48,10 +47,8 @@ SHIPPED = dict(
     max_iters=10,
     vmf_kappa=20,
     vmf_beta=0.0,
-    abstain_percentile=0.98,
-    abstain_k=32,
-    abstain_sharpness=200.0,
-)
+    abstain_percentile=0.534,
+    )
 SHIPPED_T = 0.65
 
 # one parameter at a time away from SHIPPED

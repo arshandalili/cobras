@@ -63,13 +63,7 @@ class EuclideanCOBRAS(AblationCOBRAS):
         self._device = pos.device
 
         if self.abstain_percentile is not None:
-            dn = torch.cdist(self.h_neg, self.h_neg)
-            dn.fill_diagonal_(float("inf"))
-            ref = dn.topk(
-                min(self.abstain_k, self.h_neg.size(0) - 1), dim=1, largest=False
-            ).values[:, -1]
-            self.rho_ref = float(torch.quantile(ref.float(), self.abstain_percentile).item())
-            self.abstain_ref = ref.sort().values
+            self.abstain_ref = self._abstain_reference(H_all, ref_X).sort().values
         return self
 
     def _query_log_psi(self, q: Tensor) -> Tensor:
@@ -109,11 +103,12 @@ class EuclideanCOBRAS(AblationCOBRAS):
         V = self._combine_drift(V_pos, V_neg, s2_pos, s2_neg)
         return V, log_psi_hat, log_phi_hat  # no tangential projection
 
-    @torch.no_grad()
-    def _abstain_score(self, q: Tensor, chunk: int = 64) -> Tensor:
-        d = torch.cdist(q, self.h_neg)
-        k = min(self.abstain_k, self.h_neg.size(0))
-        return d.topk(k, dim=1, largest=False).values[:, -1]
+    def _geo_sq(self, q: Tensor, H: Tensor) -> Tensor:
+        """The squared distance `log_marginal` integrates over, made Euclidean. That is the
+        whole of what the abstention gate needs to change: it reads the bridge's time
+        marginal, and the marginal is built from this kernel, so the gate follows the
+        geometry automatically instead of being reimplemented."""
+        return _sq_dists(q, H)
 
     def vector_field(self, X: Tensor) -> Tensor:
         assert self.h_pos is not None
@@ -133,9 +128,9 @@ class EuclideanCOBRAS(AblationCOBRAS):
         p0_dir = X * (R / X_norm)
 
         strength, active = self._compute_strength(p0_dir)
-        if self.abstain_percentile is not None and self.rho_ref is not None:
+        if self.abstain_percentile is not None and self.abstain_ref is not None:
             if self._gate_cache is None:
-                self._gate_cache = self._abstain_gate(X)
+                self._gate_cache = self._abstain_gate(X)   # unprojected: no sphere here
             strength = strength * self._gate_cache
             active = strength > 0
         cos_T0 = ((p0_dir / R) * self.mu_T).sum(-1).clamp(-1 + _EPS, 1 - _EPS)

@@ -25,8 +25,7 @@ MODEL, LAYER, T = "Llama3.1-8B-Base", 13, 0.65
 N_Q, CHUNK = 128, 8
 
 BASE = dict(k_bw=5, n_sinkhorn=5, alpha_sigma=1e-3, epsilon=0.0, max_iters=10,
-            vmf_kappa=20, vmf_beta=0.0, abstain_percentile=0.98, abstain_k=32,
-            abstain_sharpness=200.0, step_mode="unit", drift="centroid",
+            vmf_kappa=20, vmf_beta=0.0, abstain_percentile=0.534, step_mode="unit", drift="centroid",
             uniform_weights=False)
 
 # every row builds AblationCOBRAS: the ablated ones need its switches, and with default
@@ -70,7 +69,7 @@ def main() -> None:
             disp[(name, task)] = d
             rel = (d.norm(dim=-1) / R)
             gate = None
-            if m.abstain_percentile is not None and m.rho_ref is not None:
+            if m.abstain_percentile is not None and m.abstain_ref is not None:
                 m.reset_gate()
                 p0 = q * (R / q.norm(dim=-1, keepdim=True))
                 gate = float(m._abstain_gate(p0).mean())
