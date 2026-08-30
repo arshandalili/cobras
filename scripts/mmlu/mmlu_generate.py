@@ -12,6 +12,7 @@ from cobras.lm import HuggingFaceLM
 from cobras.utils import get_project_dir
 from cobras.utils.data import (
     load_tqa_gen_data_all_splits,
+    load_query_activations,
     load_mmlu_data,
 )
 
@@ -98,7 +99,8 @@ def main(cfg: DictConfig):
 
         print("→ Fitting steer on all TruthfulQA data ...")
         pos_X, neg_X = load_tqa_gen_data_all_splits(cfg.model, cfg.layer_idx)
-        model.fit_steer_model(pos_X, neg_X)
+        ref_X = load_query_activations(cfg.model, cfg.layer_idx, "truthfulqa")
+        model.fit_steer_model(pos_X, neg_X, ref_X=ref_X)
 
         print("→ Loading MMLU dev (5-shot) and test data ...")
         dev_questions, dev_letters, dev_choices = load_mmlu_data("dev")

@@ -1,3 +1,4 @@
+import warnings
 from typing import Literal, Optional
 
 import numpy as np
@@ -168,6 +169,38 @@ def load_tqa_nat_unsteered(
     data_dir = get_project_dir() / 'data' / 'truthfulqa' / 'activations' / model_name
     path = data_dir / f'nat_unsteered_split{split_idx}_all_seeds_activations_layer{layer_idx}.pt'
     return torch.load(path, weights_only=True, map_location='cpu')
+
+
+def load_query_activations(
+    model_name: str,
+    layer_idx: int,
+    task: str,
+    required: bool = False,
+) -> Optional[Tensor]:
+    """Last-token activations of a task's *prompts*, i.e. what a steer model sees at
+    inference time. Written by scripts/prepare/extract_query_activations.py.
+
+    Returns None when the file is absent, but warns first: a steer model configured with
+    `abstain_on_queries` then calibrates its gate on the contrastive negatives instead,
+    which moves the threshold without changing the run name. Pass `required=True` to make
+    that an error instead. (COBRAS itself raises in that case; the warning is for callers
+    that pass the result on to a model whose gate is off, where it is merely surprising.)
+    """
+    path = (
+        get_project_dir() / 'data' / 'query_activations' / model_name
+        / f'{task}_layer{layer_idx}.pt'
+    )
+    if not path.exists():
+        msg = (
+            f"no query activations at {path}. Generate them with:\n"
+            f"  uv run python scripts/prepare/extract_query_activations.py "
+            f"--model {model_name} --layer_idx {layer_idx} --tasks {task}"
+        )
+        if required:
+            raise FileNotFoundError(msg)
+        warnings.warn(msg, RuntimeWarning, stacklevel = 2)
+        return None
+    return torch.load(path, weights_only = True, map_location = 'cpu')
 
 
 def load_tqa_gen_data_all_splits(

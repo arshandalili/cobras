@@ -15,6 +15,7 @@ from cobras.lm import HuggingFaceLM, batch_generate
 from cobras.utils import get_project_dir
 from cobras.utils.data import (
     load_tqa_gen_data_all_splits,
+    load_query_activations,
     load_gsm8k_data,
 )
 
@@ -98,7 +99,8 @@ def main(cfg: DictConfig):
             cfg.model,
             cfg.layer_idx,
         )
-        model.fit_steer_model(pos_X, neg_X)
+        ref_X = load_query_activations(cfg.model, cfg.layer_idx, "truthfulqa")
+        model.fit_steer_model(pos_X, neg_X, ref_X=ref_X)
 
         # Free steering training activations if no longer needed.
         del pos_X, neg_X

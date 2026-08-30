@@ -1,0 +1,14 @@
+type: GatedSteer
+kwargs:
+  base: SphericalSteer
+  abstain_percentile: 0.98
+  abstain_k: 32
+  abstain_sharpness: 200.0
+  abstain_on_queries: false
+  base_kwargs:
+    kappa: 20.0
+    alpha: 0.7
+    beta: -0.15
+T: 4
+suffix: ""
+name: q1-SphericalSteer-gate${steer.kwargs.abstain_percentile}-k${steer.kwargs.abstain_k}-sh${steer.kwargs.abstain_sharpness}-T${steer.T}${steer.suffix}

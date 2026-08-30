@@ -9,7 +9,7 @@ dataset: triviaqa
 layer_idx: 13
 batch_size: 16
 seed: 42
-num_examples: 4000
+num_examples: 1000
 
 hydra:
   run:

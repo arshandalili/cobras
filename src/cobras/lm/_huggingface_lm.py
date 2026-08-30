@@ -1,5 +1,7 @@
 from typing import Optional, Callable
 from functools import partial
+import inspect
+import warnings
 from tqdm import trange
 
 import numpy as np
@@ -268,9 +270,24 @@ class HuggingFaceLM:
         return scores
 
 
-    def fit_steer_model(self, *args, **kwargs) -> None: 
+    def fit_steer_model(self, *args, **kwargs) -> None:
+        """Fit the steer model, dropping keyword arguments its `fit` does not take.
+
+        The callers pass `ref_X` to every method so one call site serves all of them, but
+        only the gated ones accept it. Dropping a *set* value is worth a warning: that is
+        how a run silently ends up with a differently calibrated abstention gate.
+        """
         if self.steer_model is None:
             return
+        accepted = inspect.signature(self.steer_model.fit).parameters
+        dropped = [k for k, v in kwargs.items() if k not in accepted and v is not None]
+        if dropped:
+            warnings.warn(
+                f"{type(self.steer_model).__name__}.fit does not accept "
+                f"{', '.join(dropped)}; ignoring.",
+                RuntimeWarning, stacklevel = 2,
+            )
+        kwargs = {k: v for k, v in kwargs.items() if k in accepted}
         self.steer_model.fit(*args, **kwargs)
     
     def get_num_layers(self) -> int:

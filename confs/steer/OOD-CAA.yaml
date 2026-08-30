@@ -1,0 +1,5 @@
+type: CAA
+kwargs: {}
+T: 4
+suffix: ""
+name: q1-CAA-T${steer.T}${steer.suffix}

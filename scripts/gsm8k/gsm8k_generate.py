@@ -13,6 +13,7 @@ from cobras.lm import HuggingFaceLM, batch_generate
 from cobras.utils import get_project_dir
 from cobras.utils.data import (
     load_tqa_gen_data_all_splits,
+    load_query_activations,
     load_gsm8k_data,
 )
 
@@ -64,7 +65,8 @@ def main(cfg: DictConfig):
 
         print("→ Fitting steer on all TruthfulQA data ...")
         pos_X, neg_X = load_tqa_gen_data_all_splits(cfg.model, cfg.layer_idx)
-        model.fit_steer_model(pos_X, neg_X)
+        ref_X = load_query_activations(cfg.model, cfg.layer_idx, "truthfulqa")
+        model.fit_steer_model(pos_X, neg_X, ref_X=ref_X)
 
         print("→ Loading GSM8K data ...")
         from datasets import load_dataset

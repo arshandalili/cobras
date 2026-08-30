@@ -12,6 +12,7 @@ from cobras.lm import HuggingFaceLM, batch_chat
 from cobras.utils import get_project_dir
 from cobras.utils.data import load_tqa_gen_data
 from cobras.utils.data import load_tqa_gen_questions
+from cobras.utils.data import load_query_activations
 
 
 truthfulqa_system_prompt = (
@@ -60,7 +61,8 @@ def main(cfg: DictConfig):
             )
             
             pos_train, neg_train = load_tqa_gen_data(cfg.model, cfg.layer_idx, train_split_idx)
-            model.fit_steer_model(pos_train, neg_train)
+            ref_X = load_query_activations(cfg.model, cfg.layer_idx, f"truthfulqa_split{train_split_idx}")
+            model.fit_steer_model(pos_train, neg_train, ref_X=ref_X)
             
             print(f"→ Loading test questions from split {test_split_idx} ...")
             prompts = load_tqa_gen_questions(test_split_idx)

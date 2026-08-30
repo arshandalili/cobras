@@ -1,0 +1,26 @@
+# Abstention on the bridge's own time marginal p_0 = psi_hat * phi_hat in the plain
+# Eqs. (10)-(11) form at a small bandwidth, calibrated as a quantile of the score over
+# held-out in-distribution *prompt* activations.  abstain_percentile is the nominal
+# in-distribution coverage and is swept on the CLI.  It is set to 0.534 so that the realized
+# in-distribution mean gate is 0.768, matching the 0.767 of the shipped k-NN gate: the two rows
+# then differ only in which quantity is thresholded, not in how much in-distribution steering
+# they give up.  The choice uses in-distribution data only.
+type: AblationCOBRAS
+kwargs:
+  k_bw: 5
+  n_sinkhorn: 5
+  alpha_sigma: 1.0e-3
+  epsilon: 0.0
+  max_iters: 10
+  vmf_kappa: 20
+  vmf_beta: 0.0
+  abstain_percentile: 0.534
+  abstain_k: 32
+  abstain_sharpness: 200.0
+  abstain_signal: marginal
+  abstain_bandwidth_scale: 0.00390625
+  abstain_calibration: quantile
+  abstain_on_queries: true
+T: 0.65
+suffix: ""
+name: q1-cobras-marginal-b${steer.kwargs.abstain_bandwidth_scale}-cov${steer.kwargs.abstain_percentile}-T${steer.T}${steer.suffix}

@@ -1,0 +1,8 @@
+type: SphericalSteer
+kwargs:
+  kappa: 20.0
+  alpha: 0.7
+  beta: -0.15
+T: 4
+suffix: ""
+name: q1-SphericalSteer-T${steer.T}${steer.suffix}
