@@ -1,0 +1,20 @@
+# Q4 (Reviewer 4oei) leave-one-out component ablation.
+# Shipped COBRAS configuration: T=0.65, abstain p=0.98, k_abs=32, sharpness=200, kappa=20, K=10.
+# direction normalisation removed: the raw Eq. 31 drift sets the step magnitude.
+type: AblationCOBRAS
+kwargs:
+  k_bw: 5
+  n_sinkhorn: 5
+  alpha_sigma: 1.0e-3
+  epsilon: 0.0
+  max_iters: 10
+  vmf_kappa: 20
+  vmf_beta: 0.0
+  abstain_percentile: 0.98
+  abstain_k: 32
+  abstain_sharpness: 200.0
+  step_mode: raw
+  drift: gradient
+T: 0.65
+
+name: q4-rawstep

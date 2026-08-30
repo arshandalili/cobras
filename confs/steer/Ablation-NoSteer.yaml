@@ -1,0 +1,7 @@
+# Q4 (Reviewer 4oei): unsteered reference, run under the same numerical settings as the
+# Q4 ablation rows so that every row of the table is comparable. Own name to avoid
+# colliding with other rebuttal runs.
+type: NoSteer
+kwargs: {}
+T: 1.0
+name: q4-nosteer

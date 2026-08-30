@@ -1,0 +1,20 @@
+# Q4 (Reviewer 4oei): control for the vMF row. The vMF strength gate is also a step-size
+# control: its mean value on in-distribution queries is 0.855 (0.830 / 0.880 over the two
+# TruthfulQA folds), so removing it raises the mean step by 1/0.855. This row removes the gate
+# and lowers T by the same factor, 0.65 * 0.855 = 0.556, so the mean step length is unchanged
+# and only the query dependence of the gate is removed.
+type: COBRAS
+kwargs:
+  k_bw: 5
+  n_sinkhorn: 5
+  alpha_sigma: 1.0e-3
+  epsilon: 0.0
+  max_iters: 10
+  vmf_kappa: null
+  vmf_beta: 0.0
+  abstain_percentile: 0.98
+  abstain_k: 32
+  abstain_sharpness: 200.0
+T: 0.556
+
+name: q4-novmf-tmatch

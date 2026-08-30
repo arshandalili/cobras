@@ -1,0 +1,6 @@
+# Unsteered reference under the same runtime settings as the Q6 ladder rows.
+type: NoSteer
+kwargs: {}
+T: 1.0
+
+name: q6-nosteer
